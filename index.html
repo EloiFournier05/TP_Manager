@@ -199,6 +199,7 @@
           <div class="mCard" id="view-ranking"></div>
           <div class="mCard" id="view-add" style="display:none"></div>
           <div class="mCard" id="view-jerseys" style="display:none"></div>
+          <div class="mCard" id="view-player" style="display:none"></div>
         </div>
 
         <nav class="mNav">
@@ -220,6 +221,7 @@
       window.__vRanking = document.getElementById("view-ranking");
       window.__vAdd = document.getElementById("view-add");
       window.__vJerseys = document.getElementById("view-jerseys");
+      window.__vPlayer = document.getElementById("view-player");
 
       if (!document.getElementById("mobile-ui-v2-style")) {
         const style = document.createElement("style");
@@ -291,6 +293,13 @@
           .mPts{width:110px; text-align:right; font-variant-numeric:tabular-nums;}
           .mName{font-weight:800;}
 
+          .mPlayerBtn{
+            all:unset;
+            cursor:pointer;
+            font-weight:800;
+          }
+          .mPlayerBtn:active{opacity:.7;}
+
           .mList{display:flex; flex-direction:column; gap:10px;}
           .mLine{
             display:flex; gap:10px; align-items:center; justify-content:space-between;
@@ -317,56 +326,56 @@
           .mNavIcon{font-size:18px; line-height:18px;}
           .mNavText{font-size:11px; letter-spacing:.2px;}
           .mNavBtn.active .mNavText{color:var(--accent);}
-          /* --- Jerseys block (home / classement) --- */
-.mJerseys{
-  margin-top:12px;
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px;
-}
-@media (max-width:420px){
-  .mJerseys{grid-template-columns:1fr;}
-}
 
-.mJerseyCard{
-  border:1px solid var(--border);
-  border-radius:16px;
-  padding:12px;
-  background:#0f0f11;
-  display:flex;
-  flex-direction:column;
-  gap:6px;
-}
+          /* Jerseys block (home / classement) */
+          .mJerseys{
+            margin-top:12px;
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:10px;
+          }
+          @media (max-width:420px){
+            .mJerseys{grid-template-columns:1fr;}
+          }
 
-.mJerseyTop{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-}
+          .mJerseyCard{
+            border:1px solid var(--border);
+            border-radius:16px;
+            padding:12px;
+            background:#0f0f11;
+            display:flex;
+            flex-direction:column;
+            gap:6px;
+          }
 
-.mJerseyDot{
-  width:14px;
-  height:14px;
-  border-radius:50%;
-  border:1px solid rgba(255,255,255,.25);
-}
+          .mJerseyTop{
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:10px;
+          }
 
-.mJerseyName{
-  font-weight:900;
-  font-size:13px;
-}
+          .mJerseyDot{
+            width:14px;
+            height:14px;
+            border-radius:50%;
+            border:1px solid rgba(255,255,255,.25);
+          }
 
-.mJerseyHolder{
-  font-weight:900;
-  font-size:15px;
-}
+          .mJerseyName{
+            font-weight:900;
+            font-size:13px;
+          }
 
-.mJerseyHolder.mNone{
-  color:var(--muted);
-  font-weight:800;
-}
+          .mJerseyHolder{
+            font-weight:900;
+            font-size:15px;
+          }
 
+          .mJerseyHolder.mNone{
+            color:var(--muted);
+            font-weight:800;
+          }
         `;
         document.head.appendChild(style);
       }
@@ -376,10 +385,12 @@
       const vRanking = window.__vRanking || viewRanking;
       const vAdd = window.__vAdd || viewAdd;
       const vJerseys = window.__vJerseys || viewJerseys;
+      const vPlayer = window.__vPlayer || document.getElementById("view-player");
 
       vRanking.style.display = name === "ranking" ? "block" : "none";
       vAdd.style.display = name === "add" ? "block" : "none";
       vJerseys.style.display = name === "jerseys" ? "block" : "none";
+      vPlayer.style.display = name === "player" ? "block" : "none";
 
       document.querySelectorAll(".mNavBtn").forEach(b => {
         b.classList.toggle("active", b.getAttribute("data-view") === name);
@@ -396,88 +407,97 @@
         .replaceAll("'","&#039;");
     }
 
-function renderRanking() {
-  const vRanking = window.__vRanking || viewRanking;
-  const ranking = computeRanking();
-  const last = state.tournaments[state.tournaments.length - 1];
-  const lastText = last
-    ? `${TOURNAMENTS.find(t => t.key === last.typeKey)?.name || last.typeKey} | ${last.dateISO}`
-    : "Aucun tournoi enregistré";
+    function renderRanking() {
+      const vRanking = window.__vRanking || viewRanking;
+      const ranking = computeRanking();
+      const last = state.tournaments[state.tournaments.length - 1];
+      const lastText = last
+        ? `${TOURNAMENTS.find(t => t.key === last.typeKey)?.name || last.typeKey} | ${last.dateISO}`
+        : "Aucun tournoi enregistré";
 
-  const JERSEY_COLORS = {
-    "Maillot Jaune": "#FFD600",
-    "Maillot Vert": "#22C55E",
-    "Maillot à Pois": "#FFFFFF",
-    "Maillot Blanc": "#E5E7EB"
-  };
+      const JERSEY_COLORS = {
+        "Maillot Jaune": "#FFD600",
+        "Maillot Vert": "#22C55E",
+        "Maillot à Pois": "#FFFFFF",
+        "Maillot Blanc": "#E5E7EB"
+      };
 
-  const getPlayerNameById = (id) => {
-    const p = state.players.find(x => x.id === id);
-    return p ? p.name : null;
-  };
+      const getPlayerNameById = (id) => {
+        const p = state.players.find(x => x.id === id);
+        return p ? p.name : null;
+      };
 
-  vRanking.innerHTML = `
-    <div class="mRow" style="margin-bottom:10px">
-      <div>
-        <div class="mH2">Classement</div>
-        <div class="mHint">Dernier tournoi: ${escapeHtml(lastText)}</div>
-      </div>
-      <button class="mBtn2 mBtnSmall" id="btn-wipe">Reset</button>
-    </div>
-
-    <table class="mTable">
-      <thead>
-        <tr>
-          <th class="mRank">R</th>
-          <th>Joueur</th>
-          <th class="mPts">Pts</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${ranking.map((r, i) => `
-          <tr>
-            <td class="mRank">${i + 1}</td>
-            <td class="mName">${escapeHtml(r.name)}</td>
-            <td class="mPts">${formatPoints(r.points)}</td>
-          </tr>
-        `).join("")}
-      </tbody>
-    </table>
-
-    <div class="mH2" style="margin-top:14px">Maillots</div>
-    <div class="mJerseys">
-      ${state.jerseys.map(j => {
-        const color = JERSEY_COLORS[j.jersey] || "#A1A1AA";
-        const holder = j.holderPlayerId ? getPlayerNameById(j.holderPlayerId) : null;
-        return `
-          <div class="mJerseyCard">
-            <div class="mJerseyTop">
-              <div style="display:flex; align-items:center; gap:10px;">
-                <div class="mJerseyDot" style="background:${color}"></div>
-                <div class="mJerseyName">${escapeHtml(j.jersey)}</div>
-              </div>
-            </div>
-            <div class="mJerseyHolder ${holder ? "" : "mNone"}">
-              ${holder ? escapeHtml(holder) : "Non attribué"}
-            </div>
+      vRanking.innerHTML = `
+        <div class="mRow" style="margin-bottom:10px">
+          <div>
+            <div class="mH2">Classement</div>
+            <div class="mHint">Dernier tournoi: ${escapeHtml(lastText)}</div>
           </div>
-        `;
-      }).join("")}
-    </div>
+          <button class="mBtn2 mBtnSmall" id="btn-wipe">Reset</button>
+        </div>
 
-    <div class="mHint" style="margin-top:12px">
-      Formule: base * (0.10 + 0.90 * ((N-rang)/(N-1))^${P_EXP}). Bonus équipe: +10%, 0%, -10%.
-    </div>
-  `;
+        <table class="mTable">
+          <thead>
+            <tr>
+              <th class="mRank">R</th>
+              <th>Joueur</th>
+              <th class="mPts">Pts</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${ranking.map((r, i) => `
+              <tr>
+                <td class="mRank">${i + 1}</td>
+                <td class="mName">
+                  <button class="mPlayerBtn" data-player="${r.playerId}">${escapeHtml(r.name)}</button>
+                </td>
+                <td class="mPts">${formatPoints(r.points)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
 
-  vRanking.querySelector("#btn-wipe").addEventListener("click", () => {
-    localStorage.removeItem(KEY);
-    state = loadState();
-    renderAll();
-    switchView("ranking");
-  });
-}
+        <div class="mH2" style="margin-top:14px">Maillots</div>
+        <div class="mJerseys">
+          ${state.jerseys.map(j => {
+            const color = JERSEY_COLORS[j.jersey] || "#A1A1AA";
+            const holder = j.holderPlayerId ? getPlayerNameById(j.holderPlayerId) : null;
+            return `
+              <div class="mJerseyCard">
+                <div class="mJerseyTop">
+                  <div style="display:flex; align-items:center; gap:10px;">
+                    <div class="mJerseyDot" style="background:${color}"></div>
+                    <div class="mJerseyName">${escapeHtml(j.jersey)}</div>
+                  </div>
+                </div>
+                <div class="mJerseyHolder ${holder ? "" : "mNone"}">
+                  ${holder ? escapeHtml(holder) : "Non attribué"}
+                </div>
+              </div>
+            `;
+          }).join("")}
+        </div>
 
+        <div class="mHint" style="margin-top:12px">
+          Formule: base * (0.10 + 0.90 * ((N-rang)/(N-1))^${P_EXP}). Bonus équipe: +10%, 0%, -10%.
+        </div>
+      `;
+
+      vRanking.querySelectorAll(".mPlayerBtn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const pid = btn.getAttribute("data-player");
+          renderPlayerProfile(pid);
+          switchView("player");
+        });
+      });
+
+      vRanking.querySelector("#btn-wipe").addEventListener("click", () => {
+        localStorage.removeItem(KEY);
+        state = loadState();
+        renderAll();
+        switchView("ranking");
+      });
+    }
 
     function renderAdd() {
       const vAdd = window.__vAdd || viewAdd;
@@ -695,6 +715,92 @@ function renderRanking() {
       });
 
       refresh();
+    }
+
+    function renderPlayerProfile(playerId){
+      const vPlayer = window.__vPlayer || document.getElementById("view-player");
+      const player = state.players.find(p => p.id === playerId);
+
+      if (!player){
+        vPlayer.innerHTML = `<div class="mH2">Joueur introuvable</div>`;
+        return;
+      }
+
+      const entries = [];
+      for (const tour of state.tournaments){
+        const base = getTournamentBase(tour.typeKey);
+        const N = tour.players.length;
+
+        const res = tour.players.find(x => x.playerId === playerId);
+        if (!res) continue;
+
+        const indiv = pointsForRank(base, N, res.rank);
+        const total = applyTeamBonus(indiv, res.teamPos);
+
+        entries.push({
+          dateISO: tour.dateISO,
+          typeName: (TOURNAMENTS.find(t => t.key === tour.typeKey)?.name || tour.typeKey),
+          N,
+          rank: res.rank,
+          teamPos: res.teamPos || null,
+          points: total
+        });
+      }
+
+      entries.sort((a,b) => (b.dateISO || "").localeCompare(a.dateISO || ""));
+
+      const totalPoints = entries.reduce((s,e) => s + e.points, 0);
+      const played = entries.length;
+      const bestRank = played ? Math.min(...entries.map(e => e.rank)) : null;
+
+      vPlayer.innerHTML = `
+        <div class="mRow" style="margin-bottom:10px">
+          <div>
+            <div class="mH2">Palmarès</div>
+            <div style="font-weight:900; font-size:16px">${escapeHtml(player.name)}</div>
+            <div class="mHint">Tournois joués: ${played}${bestRank ? ` | Meilleur rang: ${bestRank}` : ""}</div>
+          </div>
+          <button class="mBtn2 mBtnSmall" id="btn-back">Retour</button>
+        </div>
+
+        <div class="mLine" style="margin-bottom:10px">
+          <div style="font-weight:900">Total points</div>
+          <div style="font-weight:900">${formatPoints(totalPoints)}</div>
+        </div>
+
+        ${played === 0 ? `
+          <div class="mHint">Aucun tournoi enregistré pour ce joueur.</div>
+        ` : `
+          <table class="mTable">
+            <thead>
+              <tr>
+                <th style="width:92px">Date</th>
+                <th>Tournoi</th>
+                <th style="width:52px">N</th>
+                <th style="width:64px">Rang</th>
+                <th style="width:72px">Équipe</th>
+                <th class="mPts">Pts</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${entries.map(e => `
+                <tr>
+                  <td>${escapeHtml(e.dateISO)}</td>
+                  <td>${escapeHtml(e.typeName)}</td>
+                  <td>${e.N}</td>
+                  <td>${e.rank}</td>
+                  <td>${e.teamPos ? e.teamPos : "-"}</td>
+                  <td class="mPts">${formatPoints(e.points)}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        `}
+      `;
+
+      vPlayer.querySelector("#btn-back").addEventListener("click", () => {
+        switchView("ranking");
+      });
     }
 
     function renderJerseys() {
