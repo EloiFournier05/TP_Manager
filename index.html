@@ -317,6 +317,56 @@
           .mNavIcon{font-size:18px; line-height:18px;}
           .mNavText{font-size:11px; letter-spacing:.2px;}
           .mNavBtn.active .mNavText{color:var(--accent);}
+          /* --- Jerseys block (home / classement) --- */
+.mJerseys{
+  margin-top:12px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+@media (max-width:420px){
+  .mJerseys{grid-template-columns:1fr;}
+}
+
+.mJerseyCard{
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:12px;
+  background:#0f0f11;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+.mJerseyTop{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+
+.mJerseyDot{
+  width:14px;
+  height:14px;
+  border-radius:50%;
+  border:1px solid rgba(255,255,255,.25);
+}
+
+.mJerseyName{
+  font-weight:900;
+  font-size:13px;
+}
+
+.mJerseyHolder{
+  font-weight:900;
+  font-size:15px;
+}
+
+.mJerseyHolder.mNone{
+  color:var(--muted);
+  font-weight:800;
+}
+
         `;
         document.head.appendChild(style);
       }
@@ -346,54 +396,88 @@
         .replaceAll("'","&#039;");
     }
 
-    function renderRanking() {
-      const vRanking = window.__vRanking || viewRanking;
-      const ranking = computeRanking();
-      const last = state.tournaments[state.tournaments.length - 1];
-      const lastText = last
-        ? `${TOURNAMENTS.find(t => t.key === last.typeKey)?.name || last.typeKey} | ${last.dateISO}`
-        : "Aucun tournoi enregistré";
+function renderRanking() {
+  const vRanking = window.__vRanking || viewRanking;
+  const ranking = computeRanking();
+  const last = state.tournaments[state.tournaments.length - 1];
+  const lastText = last
+    ? `${TOURNAMENTS.find(t => t.key === last.typeKey)?.name || last.typeKey} | ${last.dateISO}`
+    : "Aucun tournoi enregistré";
 
-      vRanking.innerHTML = `
-        <div class="mRow" style="margin-bottom:10px">
-          <div>
-            <div class="mH2">Classement</div>
-            <div class="mHint">Dernier tournoi: ${escapeHtml(lastText)}</div>
+  const JERSEY_COLORS = {
+    "Maillot Jaune": "#FFD600",
+    "Maillot Vert": "#22C55E",
+    "Maillot à Pois": "#FFFFFF",
+    "Maillot Blanc": "#E5E7EB"
+  };
+
+  const getPlayerNameById = (id) => {
+    const p = state.players.find(x => x.id === id);
+    return p ? p.name : null;
+  };
+
+  vRanking.innerHTML = `
+    <div class="mRow" style="margin-bottom:10px">
+      <div>
+        <div class="mH2">Classement</div>
+        <div class="mHint">Dernier tournoi: ${escapeHtml(lastText)}</div>
+      </div>
+      <button class="mBtn2 mBtnSmall" id="btn-wipe">Reset</button>
+    </div>
+
+    <table class="mTable">
+      <thead>
+        <tr>
+          <th class="mRank">R</th>
+          <th>Joueur</th>
+          <th class="mPts">Pts</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${ranking.map((r, i) => `
+          <tr>
+            <td class="mRank">${i + 1}</td>
+            <td class="mName">${escapeHtml(r.name)}</td>
+            <td class="mPts">${formatPoints(r.points)}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+
+    <div class="mH2" style="margin-top:14px">Maillots</div>
+    <div class="mJerseys">
+      ${state.jerseys.map(j => {
+        const color = JERSEY_COLORS[j.jersey] || "#A1A1AA";
+        const holder = j.holderPlayerId ? getPlayerNameById(j.holderPlayerId) : null;
+        return `
+          <div class="mJerseyCard">
+            <div class="mJerseyTop">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <div class="mJerseyDot" style="background:${color}"></div>
+                <div class="mJerseyName">${escapeHtml(j.jersey)}</div>
+              </div>
+            </div>
+            <div class="mJerseyHolder ${holder ? "" : "mNone"}">
+              ${holder ? escapeHtml(holder) : "Non attribué"}
+            </div>
           </div>
-          <button class="mBtn2 mBtnSmall" id="btn-wipe">Reset</button>
-        </div>
+        `;
+      }).join("")}
+    </div>
 
-        <table class="mTable">
-          <thead>
-            <tr>
-              <th class="mRank">R</th>
-              <th>Joueur</th>
-              <th class="mPts">Pts</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${ranking.map((r, i) => `
-              <tr>
-                <td class="mRank">${i + 1}</td>
-                <td class="mName">${escapeHtml(r.name)}</td>
-                <td class="mPts">${formatPoints(r.points)}</td>
-              </tr>
-            `).join("")}
-          </tbody>
-        </table>
+    <div class="mHint" style="margin-top:12px">
+      Formule: base * (0.10 + 0.90 * ((N-rang)/(N-1))^${P_EXP}). Bonus équipe: +10%, 0%, -10%.
+    </div>
+  `;
 
-        <div class="mHint" style="margin-top:10px">
-          Formule: base * (0.10 + 0.90 * ((N-rang)/(N-1))^${P_EXP}). Bonus équipe: +10%, 0%, -10%.
-        </div>
-      `;
+  vRanking.querySelector("#btn-wipe").addEventListener("click", () => {
+    localStorage.removeItem(KEY);
+    state = loadState();
+    renderAll();
+    switchView("ranking");
+  });
+}
 
-      vRanking.querySelector("#btn-wipe").addEventListener("click", () => {
-        localStorage.removeItem(KEY);
-        state = loadState();
-        renderAll();
-        switchView("ranking");
-      });
-    }
 
     function renderAdd() {
       const vAdd = window.__vAdd || viewAdd;
