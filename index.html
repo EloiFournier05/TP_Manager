@@ -3,652 +3,573 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Tibo Pinart – Drink Wheel V1</title>
+  <title>Classement ATP (Alcoholic Tibo Pinart)</title>
   <style>
     :root{
-      --bg:#0b0b0c;
-      --card:#141416;
-      --card2:#101012;
-      --text:#f5f5f7;
-      --muted:#a1a1aa;
-      --border:#242428;
-      --accent:#ffffff;
-      --danger:#ef4444;
+      --bg:#0b0b0c; --card:#141416; --border:#242428;
+      --text:#f5f5f7; --muted:#a1a1aa;
     }
     *{box-sizing:border-box}
     body{
-      margin:0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      background: radial-gradient(1200px 700px at 30% 10%, #141416 0%, var(--bg) 60%);
-      color:var(--text);
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:var(--bg); color:var(--text);
     }
-    .wrap{
-      max-width:1100px;
-      margin:24px auto;
-      padding:0 16px 24px;
-      display:grid;
-      grid-template-columns: 420px 1fr;
-      gap:16px;
+    .wrap{max-width:1100px; margin:20px auto; padding:0 16px 40px}
+    .topbar{
+      display:flex; gap:10px; align-items:center; justify-content:space-between;
+      margin-bottom:14px;
     }
+    .tabs{display:flex; gap:8px; flex-wrap:wrap}
+    .tab{
+      background:#0f0f11; border:1px solid var(--border); color:var(--text);
+      padding:10px 12px; border-radius:12px; cursor:pointer; font-weight:650;
+      opacity:.85;
+    }
+    .tab.active{opacity:1; border-color:#3a3a40}
     .card{
-      background: linear-gradient(180deg, var(--card) 0%, var(--card2) 100%);
+      background:var(--card);
       border:1px solid var(--border);
       border-radius:16px;
       padding:16px;
-      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+      box-shadow:0 10px 30px rgba(0,0,0,.35);
     }
-    h1{
-      font-size:18px;
-      margin:0 0 12px;
-      letter-spacing:.2px;
-    }
+    h1{font-size:18px; margin:0}
+    h2{font-size:14px; margin:0 0 10px; color:var(--muted); font-weight:650}
+    .grid{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+    @media (max-width: 900px){ .grid{grid-template-columns:1fr} }
+    table{width:100%; border-collapse:collapse; font-size:14px}
+    th,td{padding:10px 8px; border-bottom:1px solid var(--border); text-align:left}
+    th{color:var(--muted); font-weight:700; font-size:12px; letter-spacing:.2px}
     .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
     label{font-size:12px; color:var(--muted)}
-    select, input[type="text"], input[type="number"]{
-      background:#0e0e10;
-      color:var(--text);
+    input, select{
+      background:#0f0f11; color:var(--text);
       border:1px solid var(--border);
       border-radius:12px;
-      padding:10px 12px;
-      outline:none;
+      padding:10px 12px; outline:none;
     }
-    select{min-width:240px}
     input[type="number"]{width:120px}
-    input[type="color"]{
-      width:44px; height:40px;
-      border:none; background:transparent; padding:0;
-    }
     .btn{
-      background:#ffffff;
-      color:#0b0b0c;
-      border:none;
-      border-radius:12px;
-      padding:10px 14px;
-      font-weight:650;
+      background:#fff; color:#0b0b0c;
+      border:none; border-radius:12px;
+      padding:10px 14px; font-weight:750;
       cursor:pointer;
     }
-    .btn:disabled{opacity:.5; cursor:not-allowed}
     .btn2{
-      background:#0e0e10;
-      color:var(--text);
+      background:#0f0f11; color:var(--text);
       border:1px solid var(--border);
       border-radius:12px;
-      padding:10px 14px;
-      cursor:pointer;
+      padding:10px 14px; cursor:pointer;
     }
-    .small{font-size:12px; color:var(--muted)}
-    .divider{height:1px; background:var(--border); margin:14px 0}
-    .list{
-      display:flex;
-      flex-direction:column;
-      gap:8px;
-      margin-top:10px;
-    }
-    .item{
+    .muted{color:var(--muted)}
+    .notice{font-size:12px; color:var(--muted); margin-top:8px; line-height:1.35}
+    .danger{color:#ef4444}
+    .playerLine{
       display:grid;
-      grid-template-columns: 14px 1fr auto auto;
+      grid-template-columns: 1fr 140px 160px;
       gap:10px;
       align-items:center;
-      background:#0e0e10;
-      border:1px solid var(--border);
-      border-radius:12px;
-      padding:10px 12px;
+      padding:10px 0;
+      border-bottom:1px solid var(--border);
     }
-    .dot{
-      width:10px; height:10px; border-radius:50%;
-      border:1px solid rgba(255,255,255,.25);
-    }
-    .name{
-      display:flex; align-items:center; gap:10px;
-      font-weight:600;
-    }
-    .meta{color:var(--muted); font-size:12px}
-    .pill{
-      font-size:12px;
-      padding:6px 10px;
-      border-radius:999px;
-      border:1px solid var(--border);
-      color:var(--muted);
-      background:#0b0b0c;
-      min-width:70px;
-      text-align:center;
-    }
-    .toggle{
-      display:flex; align-items:center; gap:8px;
-      user-select:none;
-      font-size:13px;
-      color:var(--muted);
-    }
-    .toggle input{transform:scale(1.1)}
-    .wheelBox{
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:center;
-      gap:12px;
-    }
-    canvas{
-      width:min(520px, 100%);
-      height:auto;
-      background:transparent;
-    }
-    .pointer{
-      width:0;height:0;
-      border-left:12px solid transparent;
-      border-right:12px solid transparent;
-      border-bottom:18px solid #fff;
-      filter: drop-shadow(0 6px 10px rgba(0,0,0,.35));
-      margin-bottom:-6px;
-    }
-    .result{
-      width:100%;
-      text-align:center;
-      font-size:14px;
-      color:var(--muted);
-      min-height:20px;
-    }
-    .result strong{color:var(--text)}
-    .warn{color:var(--danger)}
-    @media (max-width: 980px){
-      .wrap{grid-template-columns:1fr}
-    }
+    .playerLine:last-child{border-bottom:none}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="card">
-      <h1>Configurer la roue</h1>
-
-      <div class="row">
-        <div>
-          <label for="preset">Ajouter un alcool</label><br/>
-          <select id="preset">
-            <optgroup label="Alcools (classiques)" id="presetGroup"></optgroup>
-            <optgroup label="Autre">
-              <option value="__other__">Autre…</option>
-            </optgroup>
-          </select>
-        </div>
-        <div>
-          <label for="presetQty">Verres</label><br/>
-          <input id="presetQty" type="number" min="0" step="1" value="10" />
-        </div>
-        <div style="align-self:flex-end">
-          <button class="btn2" id="addPresetBtn">Ajouter</button>
-        </div>
+    <div class="topbar">
+      <h1>Classement ATP (Alcoholic Tibo Pinart)</h1>
+      <div class="tabs">
+        <button class="tab active" data-view="ranking">Classement</button>
+        <button class="tab" data-view="add">Ajouter un tournoi</button>
+        <button class="tab" data-view="jerseys">Maillots</button>
       </div>
-
-      <div id="otherForm" style="display:none; margin-top:12px">
-        <div class="row">
-          <div>
-            <label for="otherName">Nom</label><br/>
-            <input id="otherName" type="text" placeholder="Ex: Chartreuse" />
-          </div>
-          <div>
-            <label for="otherColor">Couleur</label><br/>
-            <input id="otherColor" type="color" value="#ffffff" />
-          </div>
-          <div>
-            <label for="otherQty">Verres</label><br/>
-            <input id="otherQty" type="number" min="0" step="1" value="10" />
-          </div>
-          <div style="align-self:flex-end">
-            <button class="btn2" id="addOtherBtn">Ajouter</button>
-          </div>
-        </div>
-        <div class="small" style="margin-top:6px">Si le nom existe déjà, on ajoute au stock existant.</div>
-      </div>
-
-      <div class="divider"></div>
-
-      <div class="row" style="justify-content:space-between">
-        <div class="toggle">
-          <input id="includeWater" type="checkbox" checked />
-          <label for="includeWater">Inclure “Eau (repos)”</label>
-        </div>
-        <div class="toggle">
-          <input id="showDepleted" type="checkbox" />
-          <label for="showDepleted">Afficher épuisés sur la roue</label>
-        </div>
-      </div>
-
-      <div class="divider"></div>
-
-      <div class="row" style="justify-content:space-between; align-items:baseline">
-        <div>
-          <div style="font-weight:650">Stocks</div>
-          <div class="small">Désactive pour exclure. Le stock tombe à 0 après tirages.</div>
-        </div>
-        <button class="btn2" id="resetBtn">Reset démo</button>
-      </div>
-
-      <div class="list" id="list"></div>
     </div>
 
-    <div class="card wheelBox">
-      <div class="pointer" aria-hidden="true"></div>
-      <canvas id="wheel" width="640" height="640"></canvas>
-      <div class="row" style="justify-content:center">
-        <button class="btn" id="spinBtn">SPIN</button>
-      </div>
-      <div class="result" id="result"></div>
-      <div class="small" id="hint"></div>
-    </div>
+    <div class="card" id="view-ranking"></div>
+    <div class="card" id="view-add" style="display:none"></div>
+    <div class="card" id="view-jerseys" style="display:none"></div>
   </div>
 
 <script>
 (() => {
-  // --------- Presets (couleurs fixes) ----------
-  const PRESETS = [
-    { name: "Vodka", color: "#7C3AED" },
-    { name: "Gin", color: "#10B981" },
-    { name: "Rhum", color: "#F59E0B" },
-    { name: "Tequila", color: "#EF4444" },
-    { name: "Whisky", color: "#8B5A2B" },
-    { name: "Jäger", color: "#111827" },
-    { name: "Aperol", color: "#F97316" },
-    { name: "Get 27", color: "#22C55E" },
-    { name: "Ricard / Pastis", color: "#3B82F6" },
-    { name: "1664", color: "#2563EB" },
-    { name: "Heineken", color: "#16A34A" },
-    { name: "Kro", color: "#DC2626" },
-    { name: "8.6", color: "#F59E0B" }
+  // ---------------- Config ----------------
+  const P_EXP = 1.3;
+  const MIN_FRAC = 0.10;
+
+  const TOURNAMENTS = [
+    { key:"major", name:"Major", base:1500 },
+    { key:"monster1000", name:"Monster 1000", base:1000 },
+    { key:"murge500", name:"Murge 500", base:500 },
+    { key:"chamangeurs250", name:"Chamangeurs 250", base:250 },
+    { key:"golems100", name:"Golems 100", base:100 }
   ];
 
-  const WATER = { id: "water", type: "water", name: "Eau (repos)", color: "#E5E7EB", remaining: Infinity, enabled: true };
+  const DEFAULT_JERSEYS = [
+    "Maillot Jaune",
+    "Maillot Vert",
+    "Maillot à Pois",
+    "Maillot Blanc"
+  ];
 
-  // --------- State ----------
-  /** @type {{id:string,type:'alcohol'|'water',name:string,color:string,remaining:number,enabled:boolean}[]} */
-  let items = [];
+  // ---------------- Storage ----------------
+  const KEY = "atp_tibo_v1";
 
-  // --------- DOM ----------
-  const presetSelect = document.getElementById("preset");
-  const presetGroup = document.getElementById("presetGroup");
-  const presetQty = document.getElementById("presetQty");
-  const addPresetBtn = document.getElementById("addPresetBtn");
+  function loadState(){
+    const raw = localStorage.getItem(KEY);
+    if (!raw){
+      return {
+        players: [],              // [{id,name}]
+        tournaments: [],          // [{id,dateISO,typeKey,players:[{playerId,rank,teamPos?}]}]
+        jerseys: DEFAULT_JERSEYS.map(j => ({ jersey: j, holderPlayerId: null }))
+      };
+    }
+    try{
+      const s = JSON.parse(raw);
+      if (!s.players) s.players = [];
+      if (!s.tournaments) s.tournaments = [];
+      if (!s.jerseys) s.jerseys = DEFAULT_JERSEYS.map(j => ({ jersey: j, holderPlayerId: null }));
+      return s;
+    } catch {
+      localStorage.removeItem(KEY);
+      return loadState();
+    }
+  }
+  function saveState(s){ localStorage.setItem(KEY, JSON.stringify(s)); }
 
-  const otherForm = document.getElementById("otherForm");
-  const otherName = document.getElementById("otherName");
-  const otherColor = document.getElementById("otherColor");
-  const otherQty = document.getElementById("otherQty");
-  const addOtherBtn = document.getElementById("addOtherBtn");
+  let state = loadState();
 
-  const includeWater = document.getElementById("includeWater");
-  const showDepleted = document.getElementById("showDepleted");
-  const listEl = document.getElementById("list");
-  const resetBtn = document.getElementById("resetBtn");
-
-  const canvas = document.getElementById("wheel");
-  const ctx = canvas.getContext("2d");
-  const spinBtn = document.getElementById("spinBtn");
-  const resultEl = document.getElementById("result");
-  const hintEl = document.getElementById("hint");
-
-  // --------- Helpers ----------
-  const slug = (s) => s.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g,"");
-  const clampInt = (v, min=0, max=1e9) => {
+  // ---------------- Utils ----------------
+  const uid = () => Math.random().toString(16).slice(2) + Date.now().toString(16);
+  const clampInt = (v, min, max) => {
     const n = Number.parseInt(v, 10);
     if (Number.isNaN(n)) return min;
     return Math.max(min, Math.min(max, n));
   };
+  const byName = (a,b) => a.name.localeCompare(b.name, "fr");
 
-  function ensurePresetOptions(){
-    presetGroup.innerHTML = "";
-    PRESETS.forEach(p => {
-      const opt = document.createElement("option");
-      opt.value = p.name;
-      opt.textContent = p.name;
-      presetGroup.appendChild(opt);
-    });
+  function upsertPlayer(name){
+    const clean = (name || "").trim();
+    if (!clean) return null;
+    const existing = state.players.find(p => p.name.toLowerCase() === clean.toLowerCase());
+    if (existing) return existing;
+    const p = { id: uid(), name: clean };
+    state.players.push(p);
+    state.players.sort(byName);
+    saveState(state);
+    return p;
   }
 
-  function getPresetByName(name){
-    return PRESETS.find(p => p.name === name) || null;
+  function inferTournamentType(N, names){
+    const hasJP = names.includes("JP");
+    const hasLouis = names.includes("Louis");
+    const hasEloi = names.includes("Eloi");
+
+    if (N >= 6 && hasJP && hasLouis && hasEloi) return "major";
+    if (N >= 6) return "monster1000";
+    if (N === 5 || N === 4) return "murge500";
+    if (N === 3) return "chamangeurs250";
+    if (N === 2) return "golems100";
+    return "golems100";
   }
 
-  function upsertAlcohol(name, color, qty){
-    const id = "alc-" + slug(name);
-    const existing = items.find(x => x.id === id && x.type === "alcohol");
-    if (existing){
-      existing.remaining += qty;
-      if (existing.remaining > 0) existing.enabled = true;
-      return;
+  function getTournamentBase(typeKey){
+    const t = TOURNAMENTS.find(x => x.key === typeKey);
+    return t ? t.base : 0;
+  }
+
+  function pointsForRank(base, N, rank){
+    if (N <= 1) return base;
+    const x = (N - rank) / (N - 1); // 1..0
+    const raw = MIN_FRAC + (1 - MIN_FRAC) * Math.pow(x, P_EXP);
+    return base * raw;
+  }
+
+  function applyTeamBonus(points, teamPos){
+    if (!teamPos) return points;
+    if (teamPos === 1) return points * 1.10;
+    if (teamPos === 3) return points * 0.90;
+    return points; // 2
+  }
+
+  function computeRanking(){
+    const totals = new Map(); // playerId -> points
+    state.players.forEach(p => totals.set(p.id, 0));
+
+    for (const tour of state.tournaments){
+      const base = getTournamentBase(tour.typeKey);
+      const N = tour.players.length;
+
+      for (const res of tour.players){
+        const indiv = pointsForRank(base, N, res.rank);
+        const withTeam = applyTeamBonus(indiv, res.teamPos);
+        totals.set(res.playerId, (totals.get(res.playerId) || 0) + withTeam);
+      }
     }
-    items.push({
-      id,
-      type: "alcohol",
-      name,
-      color,
-      remaining: qty,
-      enabled: qty > 0
-    });
+
+    const rows = state.players.map(p => ({
+      playerId: p.id,
+      name: p.name,
+      points: totals.get(p.id) || 0
+    }));
+
+    rows.sort((a,b) => b.points - a.points || a.name.localeCompare(b.name, "fr"));
+    return rows;
   }
 
-  function rebuildList(){
-    listEl.innerHTML = "";
+  // ---------------- Views ----------------
+  const viewRanking = document.getElementById("view-ranking");
+  const viewAdd = document.getElementById("view-add");
+  const viewJerseys = document.getElementById("view-jerseys");
 
-    // Water row (UI only)
-    const waterRow = document.createElement("div");
-    waterRow.className = "item";
-    waterRow.innerHTML = `
-      <div class="dot" style="background:${WATER.color}"></div>
-      <div>
-        <div class="name">${WATER.name}</div>
-        <div class="meta">Toujours disponible si inclus</div>
-      </div>
-      <div class="pill">${includeWater.checked ? "IN" : "OUT"}</div>
-      <label class="toggle" style="margin-left:auto">
-        <input type="checkbox" ${includeWater.checked ? "checked" : ""} />
-        <span>Actif</span>
-      </label>
-    `;
-    waterRow.querySelector("input").addEventListener("change", (e) => {
-      includeWater.checked = e.target.checked;
-      render();
-    });
-    listEl.appendChild(waterRow);
+  function renderRanking(){
+    const ranking = computeRanking();
 
-    // Alcohol rows
-    const sorted = [...items].sort((a,b) => a.name.localeCompare(b.name, "fr"));
-    sorted.forEach(it => {
-      const depleted = it.remaining <= 0;
-      const row = document.createElement("div");
-      row.className = "item";
-      const pillText = depleted ? "0" : String(it.remaining);
-      row.innerHTML = `
-        <div class="dot" style="background:${it.color}"></div>
+    const last = state.tournaments[state.tournaments.length - 1];
+    const lastText = last
+      ? `${TOURNAMENTS.find(t => t.key === last.typeKey)?.name || last.typeKey} | ${last.dateISO}`
+      : "Aucun tournoi enregistré";
+
+    viewRanking.innerHTML = `
+      <div class="row" style="justify-content:space-between; margin-bottom:12px">
         <div>
-          <div class="name">${it.name}</div>
-          <div class="meta">${depleted ? "<span class='warn'>Épuisé</span>" : "Disponible"}</div>
+          <h2>Classement</h2>
+          <div class="notice">Dernier tournoi: ${escapeHtml(lastText)}</div>
         </div>
-        <div class="pill">${pillText}</div>
-        <label class="toggle" style="margin-left:auto">
-          <input type="checkbox" ${it.enabled ? "checked" : ""} ${depleted ? "disabled" : ""}/>
-          <span>${it.enabled ? "Actif" : "Exclu"}</span>
-        </label>
+        <button class="btn2" id="btn-wipe">Reset local</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width:70px">Rang</th>
+            <th>Joueur</th>
+            <th style="width:160px">Points</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${ranking.map((r, i) => `
+            <tr>
+              <td>${i+1}</td>
+              <td>${escapeHtml(r.name)}</td>
+              <td>${formatPoints(r.points)}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+
+      <div class="notice">
+        Points par tournoi: base * (0.10 + 0.90 * ((N-rank)/(N-1))^${P_EXP}). Bonus équipe: +10% gagnants, 0% 2e, -10% derniers.
+      </div>
+    `;
+
+    document.getElementById("btn-wipe").addEventListener("click", () => {
+      localStorage.removeItem(KEY);
+      state = loadState();
+      renderAll();
+    });
+  }
+
+  function renderAdd(){
+    const options = state.players.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("");
+
+    viewAdd.innerHTML = `
+      <h2>Ajouter un tournoi</h2>
+
+      <div class="grid">
+        <div>
+          <label>Date</label><br/>
+          <input id="tour-date" type="date" />
+        </div>
+
+        <div>
+          <label>Type (auto conseillé)</label><br/>
+          <select id="tour-type">
+            ${TOURNAMENTS.map(t => `<option value="${t.key}">${t.name} (base ${t.base})</option>`).join("")}
+          </select>
+        </div>
+      </div>
+
+      <div style="height:12px"></div>
+
+      <div class="row">
+        <div style="flex:1; min-width:220px">
+          <label>Ajouter un joueur existant</label><br/>
+          <select id="pick-player" style="width:100%">
+            <option value="">Sélectionner…</option>
+            ${options}
+          </select>
+        </div>
+
+        <div style="flex:1; min-width:220px">
+          <label>Ou créer un nouveau joueur</label><br/>
+          <input id="new-player" type="text" placeholder="Nom (ex: Matis)" style="width:100%" />
+        </div>
+
+        <div style="align-self:flex-end">
+          <button class="btn2" id="btn-add-player">Ajouter à la partie</button>
+        </div>
+      </div>
+
+      <div class="notice">
+        Règle Major: 6+ joueurs et présence de JP, Louis, Eloi. Sinon 6+ = Monster 1000, 4-5 = Murge 500, 3 = Chamangeurs 250, 2 = Golems 100.
+      </div>
+
+      <div style="height:14px"></div>
+
+      <div id="players-area"></div>
+
+      <div style="height:14px"></div>
+
+      <div class="row" style="justify-content:space-between">
+        <div class="muted" id="auto-suggest"></div>
+        <button class="btn" id="btn-save">Enregistrer le tournoi</button>
+      </div>
+
+      <div class="notice danger" id="add-error" style="display:none"></div>
+    `;
+
+    const dateInput = document.getElementById("tour-date");
+    const typeSelect = document.getElementById("tour-type");
+    const pickPlayer = document.getElementById("pick-player");
+    const newPlayer = document.getElementById("new-player");
+    const addBtn = document.getElementById("btn-add-player");
+    const area = document.getElementById("players-area");
+    const saveBtn = document.getElementById("btn-save");
+    const autoSuggest = document.getElementById("auto-suggest");
+    const err = document.getElementById("add-error");
+
+    // default date today
+    const today = new Date();
+    dateInput.value = today.toISOString().slice(0,10);
+
+    /** @type {{playerId:string, name:string, rank:number, teamPos:number|null}[]} */
+    let current = [];
+
+    function refresh(){
+      area.innerHTML = `
+        <div class="row" style="justify-content:space-between; margin-bottom:8px">
+          <div><strong>Participants (${current.length})</strong></div>
+          <button class="btn2" id="btn-clear">Vider</button>
+        </div>
+
+        ${current.length === 0 ? `<div class="notice">Ajoute des joueurs, puis renseigne leur rang fin de partie (1..N). Bonus équipe optionnel.</div>` : ""}
+
+        ${current.map((c, idx) => `
+          <div class="playerLine">
+            <div><strong>${escapeHtml(c.name)}</strong></div>
+
+            <div>
+              <label>Rang</label><br/>
+              <input data-rank="${idx}" type="number" min="1" step="1" value="${c.rank}" />
+            </div>
+
+            <div>
+              <label>Équipe (option)</label><br/>
+              <select data-team="${idx}">
+                <option value="" ${c.teamPos===null ? "selected" : ""}>Aucune</option>
+                <option value="1" ${c.teamPos===1 ? "selected" : ""}>1re (+10%)</option>
+                <option value="2" ${c.teamPos===2 ? "selected" : ""}>2e (0%)</option>
+                <option value="3" ${c.teamPos===3 ? "selected" : ""}>Dernière (-10%)</option>
+              </select>
+            </div>
+
+            <div style="text-align:right">
+              <button class="btn2" data-remove="${idx}">Retirer</button>
+            </div>
+          </div>
+        `).join("")}
       `;
-      const chk = row.querySelector("input");
-      chk.addEventListener("change", (e) => {
-        it.enabled = e.target.checked;
-        render();
+
+      area.querySelector("#btn-clear")?.addEventListener("click", () => {
+        current = [];
+        refresh();
       });
-      listEl.appendChild(row);
+
+      area.querySelectorAll("button[data-remove]").forEach(b => {
+        b.addEventListener("click", () => {
+          const i = clampInt(b.getAttribute("data-remove"), 0, 1e9);
+          current.splice(i,1);
+          refresh();
+        });
+      });
+
+      area.querySelectorAll("input[data-rank]").forEach(inp => {
+        inp.addEventListener("input", () => {
+          const i = clampInt(inp.getAttribute("data-rank"), 0, 1e9);
+          current[i].rank = clampInt(inp.value, 1, 999);
+        });
+      });
+
+      area.querySelectorAll("select[data-team]").forEach(sel => {
+        sel.addEventListener("change", () => {
+          const i = clampInt(sel.getAttribute("data-team"), 0, 1e9);
+          const v = sel.value === "" ? null : clampInt(sel.value, 1, 3);
+          current[i].teamPos = v;
+        });
+      });
+
+      // auto suggest type
+      const names = current.map(x => x.name);
+      const suggested = inferTournamentType(current.length, names);
+      const suggestedName = TOURNAMENTS.find(t => t.key === suggested)?.name || suggested;
+      autoSuggest.textContent = current.length >= 2
+        ? `Type conseillé: ${suggestedName}`
+        : "";
+
+      err.style.display = "none";
+      err.textContent = "";
+    }
+
+    function addParticipant(player){
+      if (current.some(x => x.playerId === player.id)) return;
+      current.push({ playerId: player.id, name: player.name, rank: current.length + 1, teamPos: null });
+      refresh();
+    }
+
+    addBtn.addEventListener("click", () => {
+      const pid = pickPlayer.value;
+      const name = newPlayer.value.trim();
+
+      if (pid){
+        const p = state.players.find(x => x.id === pid);
+        if (p) addParticipant(p);
+        pickPlayer.value = "";
+        return;
+      }
+
+      if (name){
+        const p = upsertPlayer(name);
+        if (p) addParticipant(p);
+        newPlayer.value = "";
+        // refresh player dropdown list
+        renderAdd();
+        return;
+      }
+
+      err.style.display = "block";
+      err.textContent = "Sélectionne un joueur existant ou crée un nouveau joueur.";
+    });
+
+    saveBtn.addEventListener("click", () => {
+      const N = current.length;
+      if (N < 2){
+        err.style.display = "block";
+        err.textContent = "Il faut au moins 2 joueurs.";
+        return;
+      }
+
+      // Validate ranks unique and within 1..N
+      const ranks = current.map(x => x.rank);
+      const allInRange = ranks.every(r => r >= 1 && r <= N);
+      const unique = new Set(ranks).size === ranks.length;
+      if (!allInRange || !unique){
+        err.style.display = "block";
+        err.textContent = "Les rangs doivent être uniques et compris entre 1 et N.";
+        return;
+      }
+
+      const dateISO = dateInput.value || new Date().toISOString().slice(0,10);
+
+      // You can keep manual type, but we could auto override if you want later
+      const typeKey = typeSelect.value;
+
+      const tournament = {
+        id: uid(),
+        dateISO,
+        typeKey,
+        players: current.map(x => ({
+          playerId: x.playerId,
+          rank: x.rank,
+          teamPos: x.teamPos
+        }))
+      };
+
+      state.tournaments.push(tournament);
+      saveState(state);
+
+      // reset current
+      current = [];
+      refresh();
+      renderRanking();
+      switchView("ranking");
+    });
+
+    refresh();
+  }
+
+  function renderJerseys(){
+    const ranking = computeRanking();
+    const playerOptions = (selectedId) => `
+      <option value="">Non attribué</option>
+      ${ranking.map(r => `<option value="${r.playerId}" ${r.playerId===selectedId ? "selected" : ""}>${escapeHtml(r.name)}</option>`).join("")}
+    `;
+
+    viewJerseys.innerHTML = `
+      <h2>Maillots</h2>
+      <div class="notice">Titulaires courants. Mise à jour manuelle (V1). V2 pourra calculer automatiquement des maillots “performance”.</div>
+      <div style="height:10px"></div>
+
+      ${state.jerseys.map((j, idx) => `
+        <div class="row" style="justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border)">
+          <div><strong>${escapeHtml(j.jersey)}</strong></div>
+          <div>
+            <select data-jersey="${idx}">
+              ${playerOptions(j.holderPlayerId)}
+            </select>
+          </div>
+        </div>
+      `).join("")}
+
+      <div style="height:14px"></div>
+      <button class="btn" id="btn-save-jerseys">Enregistrer</button>
+    `;
+
+    viewJerseys.querySelector("#btn-save-jerseys").addEventListener("click", () => {
+      viewJerseys.querySelectorAll("select[data-jersey]").forEach(sel => {
+        const i = clampInt(sel.getAttribute("data-jersey"), 0, 1e9);
+        state.jerseys[i].holderPlayerId = sel.value || null;
+      });
+      saveState(state);
+      renderJerseys();
     });
   }
 
-  function getDrawableCandidates(){
-    const alcohols = items.filter(x => x.type==="alcohol");
-    const activeAlcohols = alcohols.filter(x => x.enabled && x.remaining > 0);
-    const depletedAlcohols = alcohols.filter(x => x.remaining <= 0);
-
-    const wheelAlcohols = showDepleted.checked
-      ? [...activeAlcohols, ...depletedAlcohols] // visibles (mais on ne tirera jamais un depleted)
-      : activeAlcohols;
-
-    const wheelItems = [...wheelAlcohols];
-    if (includeWater.checked) wheelItems.push(WATER);
-
-    return { activeAlcohols, wheelItems };
+  function renderAll(){
+    renderRanking();
+    renderAdd();
+    renderJerseys();
   }
 
-  function pickRandom(activeAlcohols){
-    // Uniforme entre alcools actifs + eau (si incluse)
-    const pool = [...activeAlcohols];
-    if (includeWater.checked) pool.push(WATER);
-
-    if (pool.length === 0) return null;
-    const idx = Math.floor(Math.random() * pool.length);
-    return pool[idx];
-  }
-
-  function drawWheel(angleRad){
-    const { wheelItems } = getDrawableCandidates();
-
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-
-    const cx = canvas.width/2;
-    const cy = canvas.height/2;
-    const r = Math.min(cx, cy) - 18;
-
-    // background ring
-    ctx.beginPath();
-    ctx.arc(cx, cy, r+6, 0, Math.PI*2);
-    ctx.strokeStyle = "rgba(255,255,255,0.10)";
-    ctx.lineWidth = 10;
-    ctx.stroke();
-
-    if (wheelItems.length === 0){
-      ctx.fillStyle = "rgba(255,255,255,0.7)";
-      ctx.font = "600 18px system-ui";
-      ctx.textAlign = "center";
-      ctx.fillText("Ajoute des alcools pour lancer.", cx, cy);
-      return;
-    }
-
-    const slice = (Math.PI*2) / wheelItems.length;
-    let start = -Math.PI/2 + angleRad;
-
-    wheelItems.forEach((it, i) => {
-      const end = start + slice;
-
-      // sector
-      ctx.beginPath();
-      ctx.moveTo(cx,cy);
-      ctx.arc(cx,cy,r,start,end);
-      ctx.closePath();
-
-      let fill = it.color;
-      const isDepleted = (it.type==="alcohol" && it.remaining <= 0);
-      if (isDepleted){
-        // grayscale effect (simple): blend with dark
-        fill = "#2a2a2f";
-      }
-      ctx.fillStyle = fill;
-      ctx.fill();
-
-      // border
-      ctx.strokeStyle = "rgba(0,0,0,0.35)";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // label
-      const mid = (start + end)/2;
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(mid);
-      ctx.textAlign = "right";
-      ctx.font = "650 16px system-ui";
-
-      const label = it.type==="water" ? "Eau" : it.name;
-      const textColor = isDepleted ? "rgba(255,255,255,0.55)" : bestTextColor(fill);
-      ctx.fillStyle = textColor;
-      ctx.fillText(label, r - 18, 6);
-      ctx.restore();
-
-      start = end;
+  // ---------------- Navigation ----------------
+  function switchView(name){
+    document.querySelectorAll(".tab").forEach(b => {
+      b.classList.toggle("active", b.getAttribute("data-view") === name);
     });
-
-    // hub
-    ctx.beginPath();
-    ctx.arc(cx, cy, 54, 0, Math.PI*2);
-    ctx.fillStyle = "#0b0b0c";
-    ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,0.14)";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    ctx.fillStyle = "rgba(255,255,255,0.85)";
-    ctx.font = "750 14px system-ui";
-    ctx.textAlign = "center";
-    ctx.fillText("TIBO", cx, cy-4);
-    ctx.fillText("SPIN", cx, cy+16);
+    viewRanking.style.display = name === "ranking" ? "block" : "none";
+    viewAdd.style.display = name === "add" ? "block" : "none";
+    viewJerseys.style.display = name === "jerseys" ? "block" : "none";
   }
 
-  function bestTextColor(hex){
-    // hex: #RRGGBB
-    if (!hex || !hex.startsWith("#") || hex.length !== 7) return "#000";
-    const r = parseInt(hex.slice(1,3),16);
-    const g = parseInt(hex.slice(3,5),16);
-    const b = parseInt(hex.slice(5,7),16);
-    // relative luminance quick check
-    const lum = (0.2126*r + 0.7152*g + 0.0722*b) / 255;
-    return lum > 0.62 ? "#0b0b0c" : "#ffffff";
-  }
-
-  // --------- Spin animation ----------
-  let angle = 0;
-  let spinning = false;
-
-  function render(){
-    rebuildList();
-    drawWheel(angle);
-    const { activeAlcohols } = getDrawableCandidates();
-    const poolSize = activeAlcohols.length + (includeWater.checked ? 1 : 0);
-    hintEl.textContent = poolSize === 0
-      ? "Aucun choix possible (ajoute/active des alcools)."
-      : `Choix possibles au tirage : ${poolSize}`;
-  }
-
-  function spin(){
-    if (spinning) return;
-
-    const { activeAlcohols } = getDrawableCandidates();
-    const chosen = pickRandom(activeAlcohols);
-    if (!chosen){
-      resultEl.innerHTML = `<span class="warn">Impossible de lancer : aucun alcool actif avec stock > 0 (et eau désactivée).</span>`;
-      return;
-    }
-
-    spinning = true;
-    spinBtn.disabled = true;
-    resultEl.textContent = "";
-
-    // Determine final angle so that chosen slice lands at pointer (top).
-    // We compute wheel order = drawable wheelItems (includes depleted optionally), but tirage pool excludes depleted.
-    // To keep coherent visually, we select the segment in current wheelItems that matches chosen.id.
-    const { wheelItems } = getDrawableCandidates();
-    const idx = wheelItems.findIndex(x => x.id === chosen.id);
-    const slice = (Math.PI*2) / wheelItems.length;
-
-    // Pointer at top corresponds to angle = -PI/2; our draw uses start=-PI/2+angle.
-    // We want the chosen segment center to align with -PI/2 => angle should satisfy:
-    // center = -PI/2 + angle + (idx+0.5)*slice  == -PI/2 (mod 2PI)
-    // => angle == -(idx+0.5)*slice (mod 2PI)
-    const targetBase = - (idx + 0.5) * slice;
-    const extraSpins = 6 + Math.floor(Math.random()*3); // 6-8 tours
-    const target = targetBase + extraSpins * Math.PI * 2;
-
-    const startAngle = angle;
-    const delta = normalizeTarget(target - startAngle);
-
-    const duration = 2200 + Math.random()*600; // ms
-    const t0 = performance.now();
-
-    function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
-
-    function frame(now){
-      const t = Math.min(1, (now - t0) / duration);
-      angle = startAngle + delta * easeOutCubic(t);
-      drawWheel(angle);
-      if (t < 1){
-        requestAnimationFrame(frame);
-      } else {
-        angle = startAngle + delta;
-        drawWheel(angle);
-        onSpinEnd(chosen);
-      }
-    }
-    requestAnimationFrame(frame);
-  }
-
-  function normalizeTarget(x){
-    // Keep delta positive and big enough to reflect extra spins already included
-    // but avoid negative small flips.
-    return x;
-  }
-
-  function onSpinEnd(chosen){
-    spinning = false;
-    spinBtn.disabled = false;
-
-    if (chosen.type === "water"){
-      resultEl.innerHTML = `Résultat : <strong>Eau (jour de repos)</strong>`;
-      render();
-      return;
-    }
-
-    // Decrement
-    const it = items.find(x => x.id === chosen.id);
-    if (it){
-      it.remaining = Math.max(0, it.remaining - 1);
-      if (it.remaining <= 0) it.enabled = false;
-    }
-
-    resultEl.innerHTML = `Résultat : <strong>${chosen.name}</strong> <span class="small">(−1 verre)</span>`;
-    render();
-  }
-
-  // --------- Events ----------
-  presetSelect.addEventListener("change", () => {
-    otherForm.style.display = (presetSelect.value === "__other__") ? "block" : "none";
+  document.querySelectorAll(".tab").forEach(b => {
+    b.addEventListener("click", () => switchView(b.getAttribute("data-view")));
   });
 
-  addPresetBtn.addEventListener("click", () => {
-    const name = presetSelect.value;
-    if (name === "__other__"){
-      otherForm.style.display = "block";
-      return;
-    }
-    const p = getPresetByName(name);
-    if (!p) return;
-    const qty = clampInt(presetQty.value, 0, 1000);
-    upsertAlcohol(p.name, p.color, qty);
-    render();
-  });
+  // ---------------- Formatting ----------------
+  function formatPoints(x){
+    return Math.round(x).toLocaleString("fr-FR");
+  }
+  function escapeHtml(s){
+    return String(s)
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
 
-  addOtherBtn.addEventListener("click", () => {
-    const name = (otherName.value || "").trim();
-    if (!name){
-      resultEl.innerHTML = `<span class="warn">“Autre” : nom requis.</span>`;
-      return;
-    }
-    const qty = clampInt(otherQty.value, 0, 1000);
-    upsertAlcohol(name, otherColor.value, qty);
-    otherName.value = "";
-    render();
-  });
-
-  includeWater.addEventListener("change", render);
-  showDepleted.addEventListener("change", render);
-
-  spinBtn.addEventListener("click", spin);
-
-  // click hub also spins
-  canvas.addEventListener("click", (e) => {
-    // simple: always spin on click
-    spin();
-  });
-
-  resetBtn.addEventListener("click", () => {
-    items = [];
-    // seed demo
-    upsertAlcohol("Gin", getPresetByName("Gin").color, 8);
-    upsertAlcohol("Vodka", getPresetByName("Vodka").color, 8);
-    upsertAlcohol("1664", getPresetByName("1664").color, 12);
-    upsertAlcohol("Heineken", getPresetByName("Heineken").color, 10);
-    includeWater.checked = true;
-    showDepleted.checked = false;
-    resultEl.textContent = "";
-    render();
-  });
-
-  // --------- Init ----------
-  ensurePresetOptions();
-  presetSelect.value = "Gin";
-  otherForm.style.display = "none";
-
-  // start empty but with hint
-  render();
+  // ---------------- Init ----------------
+  renderAll();
 })();
 </script>
 </body>
