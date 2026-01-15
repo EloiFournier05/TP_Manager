@@ -34,49 +34,12 @@
       box-shadow:0 10px 30px rgba(0,0,0,.35);
     }
     h1{font-size:18px; margin:0}
-    h2{font-size:14px; margin:0 0 10px; color:var(--muted); font-weight:650}
-    .grid{display:grid; grid-template-columns:1fr 1fr; gap:12px}
-    @media (max-width: 900px){ .grid{grid-template-columns:1fr} }
-    table{width:100%; border-collapse:collapse; font-size:14px}
-    th,td{padding:10px 8px; border-bottom:1px solid var(--border); text-align:left}
-    th{color:var(--muted); font-weight:700; font-size:12px; letter-spacing:.2px}
-    .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
-    label{font-size:12px; color:var(--muted)}
-    input, select{
-      background:#0f0f11; color:var(--text);
-      border:1px solid var(--border);
-      border-radius:12px;
-      padding:10px 12px; outline:none;
-    }
-    input[type="number"]{width:120px}
-    .btn{
-      background:#fff; color:#0b0b0c;
-      border:none; border-radius:12px;
-      padding:10px 14px; font-weight:750;
-      cursor:pointer;
-    }
-    .btn2{
-      background:#0f0f11; color:var(--text);
-      border:1px solid var(--border);
-      border-radius:12px;
-      padding:10px 14px; cursor:pointer;
-    }
-    .muted{color:var(--muted)}
-    .notice{font-size:12px; color:var(--muted); margin-top:8px; line-height:1.35}
-    .danger{color:#ef4444}
-    .playerLine{
-      display:grid;
-      grid-template-columns: 1fr 140px 160px;
-      gap:10px;
-      align-items:center;
-      padding:10px 0;
-      border-bottom:1px solid var(--border);
-    }
-    .playerLine:last-child{border-bottom:none}
   </style>
 </head>
+
 <body>
   <div class="wrap">
+    <!-- Ce contenu sera remplacé par ensureMobileShell() -->
     <div class="topbar">
       <h1>Classement ATP (Alcoholic Tibo Pinart)</h1>
       <div class="tabs">
@@ -91,650 +54,628 @@
     <div class="card" id="view-jerseys" style="display:none"></div>
   </div>
 
-<script>
-(() => {
-  // ---------------- Config ----------------
-  const P_EXP = 1.3;
-  const MIN_FRAC = 0.10;
+  <script>
+  (() => {
+    // ---------------- Config ----------------
+    const P_EXP = 1.3;
+    const MIN_FRAC = 0.10;
 
-  const TOURNAMENTS = [
-    { key:"major", name:"Major", base:1500 },
-    { key:"monster1000", name:"Monster 1000", base:1000 },
-    { key:"murge500", name:"Murge 500", base:500 },
-    { key:"chamangeurs250", name:"Chamangeurs 250", base:250 },
-    { key:"golems100", name:"Golems 100", base:100 }
-  ];
+    const TOURNAMENTS = [
+      { key:"major", name:"Major", base:1500 },
+      { key:"monster1000", name:"Monster 1000", base:1000 },
+      { key:"murge500", name:"Murge 500", base:500 },
+      { key:"chamangeurs250", name:"Chamangeurs 250", base:250 },
+      { key:"golems100", name:"Golems 100", base:100 }
+    ];
 
-  const DEFAULT_JERSEYS = [
-    "Maillot Jaune",
-    "Maillot Vert",
-    "Maillot à Pois",
-    "Maillot Blanc"
-  ];
+    const DEFAULT_JERSEYS = [
+      "Maillot Jaune",
+      "Maillot Vert",
+      "Maillot à Pois",
+      "Maillot Blanc"
+    ];
 
-  // ---------------- Storage ----------------
-  const KEY = "atp_tibo_v1";
+    // ---------------- Storage ----------------
+    const KEY = "atp_tibo_v1";
 
-  function loadState(){
-    const raw = localStorage.getItem(KEY);
-    if (!raw){
-      return {
-        players: [],              // [{id,name}]
-        tournaments: [],          // [{id,dateISO,typeKey,players:[{playerId,rank,teamPos?}]}]
-        jerseys: DEFAULT_JERSEYS.map(j => ({ jersey: j, holderPlayerId: null }))
-      };
-    }
-    try{
-      const s = JSON.parse(raw);
-      if (!s.players) s.players = [];
-      if (!s.tournaments) s.tournaments = [];
-      if (!s.jerseys) s.jerseys = DEFAULT_JERSEYS.map(j => ({ jersey: j, holderPlayerId: null }));
-      return s;
-    } catch {
-      localStorage.removeItem(KEY);
-      return loadState();
-    }
-  }
-  function saveState(s){ localStorage.setItem(KEY, JSON.stringify(s)); }
-
-  let state = loadState();
-
-  // ---------------- Utils ----------------
-  const uid = () => Math.random().toString(16).slice(2) + Date.now().toString(16);
-  const clampInt = (v, min, max) => {
-    const n = Number.parseInt(v, 10);
-    if (Number.isNaN(n)) return min;
-    return Math.max(min, Math.min(max, n));
-  };
-  const byName = (a,b) => a.name.localeCompare(b.name, "fr");
-
-  function upsertPlayer(name){
-    const clean = (name || "").trim();
-    if (!clean) return null;
-    const existing = state.players.find(p => p.name.toLowerCase() === clean.toLowerCase());
-    if (existing) return existing;
-    const p = { id: uid(), name: clean };
-    state.players.push(p);
-    state.players.sort(byName);
-    saveState(state);
-    return p;
-  }
-
-  function inferTournamentType(N, names){
-    const hasJP = names.includes("JP");
-    const hasLouis = names.includes("Louis");
-    const hasEloi = names.includes("Eloi");
-
-    if (N >= 6 && hasJP && hasLouis && hasEloi) return "major";
-    if (N >= 6) return "monster1000";
-    if (N === 5 || N === 4) return "murge500";
-    if (N === 3) return "chamangeurs250";
-    if (N === 2) return "golems100";
-    return "golems100";
-  }
-
-  function getTournamentBase(typeKey){
-    const t = TOURNAMENTS.find(x => x.key === typeKey);
-    return t ? t.base : 0;
-  }
-
-  function pointsForRank(base, N, rank){
-    if (N <= 1) return base;
-    const x = (N - rank) / (N - 1); // 1..0
-    const raw = MIN_FRAC + (1 - MIN_FRAC) * Math.pow(x, P_EXP);
-    return base * raw;
-  }
-
-  function applyTeamBonus(points, teamPos){
-    if (!teamPos) return points;
-    if (teamPos === 1) return points * 1.10;
-    if (teamPos === 3) return points * 0.90;
-    return points; // 2
-  }
-
-  function computeRanking(){
-    const totals = new Map(); // playerId -> points
-    state.players.forEach(p => totals.set(p.id, 0));
-
-    for (const tour of state.tournaments){
-      const base = getTournamentBase(tour.typeKey);
-      const N = tour.players.length;
-
-      for (const res of tour.players){
-        const indiv = pointsForRank(base, N, res.rank);
-        const withTeam = applyTeamBonus(indiv, res.teamPos);
-        totals.set(res.playerId, (totals.get(res.playerId) || 0) + withTeam);
+    function loadState(){
+      const raw = localStorage.getItem(KEY);
+      if (!raw){
+        return {
+          players: [],
+          tournaments: [],
+          jerseys: DEFAULT_JERSEYS.map(j => ({ jersey: j, holderPlayerId: null }))
+        };
+      }
+      try{
+        const s = JSON.parse(raw);
+        if (!s.players) s.players = [];
+        if (!s.tournaments) s.tournaments = [];
+        if (!s.jerseys) s.jerseys = DEFAULT_JERSEYS.map(j => ({ jersey: j, holderPlayerId: null }));
+        return s;
+      } catch {
+        localStorage.removeItem(KEY);
+        return loadState();
       }
     }
+    function saveState(s){ localStorage.setItem(KEY, JSON.stringify(s)); }
 
-    const rows = state.players.map(p => ({
-      playerId: p.id,
-      name: p.name,
-      points: totals.get(p.id) || 0
-    }));
+    let state = loadState();
 
-    rows.sort((a,b) => b.points - a.points || a.name.localeCompare(b.name, "fr"));
-    return rows;
-  }
+    // ---------------- Utils ----------------
+    const uid = () => Math.random().toString(16).slice(2) + Date.now().toString(16);
+    const clampInt = (v, min, max) => {
+      const n = Number.parseInt(v, 10);
+      if (Number.isNaN(n)) return min;
+      return Math.max(min, Math.min(max, n));
+    };
+    const byName = (a,b) => a.name.localeCompare(b.name, "fr");
 
-const viewRanking = document.getElementById("view-ranking");
-const viewAdd = document.getElementById("view-add");
-const viewJerseys = document.getElementById("view-jerseys");
+    function upsertPlayer(name){
+      const clean = (name || "").trim();
+      if (!clean) return null;
+      const existing = state.players.find(p => p.name.toLowerCase() === clean.toLowerCase());
+      if (existing) return existing;
+      const p = { id: uid(), name: clean };
+      state.players.push(p);
+      state.players.sort(byName);
+      saveState(state);
+      return p;
+    }
 
-function ensureMobileShell() {
-  const wrap = document.querySelector(".wrap");
-  if (!wrap) return;
+    function inferTournamentType(N, names){
+      const hasJP = names.includes("JP");
+      const hasLouis = names.includes("Louis");
+      const hasEloi = names.includes("Eloi");
 
-  // Header compact + conteneur + bottom nav
-  wrap.innerHTML = `
-    <div class="mHeader">
-      <div class="mTitle">Classement ATP</div>
-      <div class="mSubtitle">Alcoholic Tibo Pinart</div>
-    </div>
+      if (N >= 6 && hasJP && hasLouis && hasEloi) return "major";
+      if (N >= 6) return "monster1000";
+      if (N === 5 || N === 4) return "murge500";
+      if (N === 3) return "chamangeurs250";
+      if (N === 2) return "golems100";
+      return "golems100";
+    }
 
-    <div class="mContent">
-      <div class="mCard" id="view-ranking"></div>
-      <div class="mCard" id="view-add" style="display:none"></div>
-      <div class="mCard" id="view-jerseys" style="display:none"></div>
-    </div>
+    function getTournamentBase(typeKey){
+      const t = TOURNAMENTS.find(x => x.key === typeKey);
+      return t ? t.base : 0;
+    }
 
-    <nav class="mNav">
-      <button class="mNavBtn active" data-view="ranking" aria-label="Classement">
-        <span class="mNavIcon">🏁</span>
-        <span class="mNavText">Classement</span>
-      </button>
-      <button class="mNavBtn" data-view="add" aria-label="Ajouter">
-        <span class="mNavIcon">➕</span>
-        <span class="mNavText">Tournoi</span>
-      </button>
-      <button class="mNavBtn" data-view="jerseys" aria-label="Maillots">
-        <span class="mNavIcon">👕</span>
-        <span class="mNavText">Maillots</span>
-      </button>
-    </nav>
-  `;
+    function pointsForRank(base, N, rank){
+      if (N <= 1) return base;
+      const x = (N - rank) / (N - 1);
+      const raw = MIN_FRAC + (1 - MIN_FRAC) * Math.pow(x, P_EXP);
+      return base * raw;
+    }
 
-  // Rebind refs (car on a remplacé le HTML)
-  window.__vRanking = document.getElementById("view-ranking");
-  window.__vAdd = document.getElementById("view-add");
-  window.__vJerseys = document.getElementById("view-jerseys");
+    function applyTeamBonus(points, teamPos){
+      if (!teamPos) return points;
+      if (teamPos === 1) return points * 1.10;
+      if (teamPos === 3) return points * 0.90;
+      return points;
+    }
 
-  // Inject CSS V2 mobile dans <head> (sobre + phone-first)
-  if (!document.getElementById("mobile-ui-v2-style")) {
-    const style = document.createElement("style");
-    style.id = "mobile-ui-v2-style";
-    style.textContent = `
-      :root{
-        --bg:#0b0b0c;
-        --panel:#121214;
-        --panel2:#0f0f11;
-        --border:#232327;
-        --text:#f5f5f7;
-        --muted:#a1a1aa;
-        --accent:#ffd600;
-        --good:#22c55e;
-        --bad:#ef4444;
-      }
-      body{background:radial-gradient(1000px 600px at 20% 0%, #141416 0%, var(--bg) 55%);}
+    function computeRanking(){
+      const totals = new Map();
+      state.players.forEach(p => totals.set(p.id, 0));
 
-      .wrap{max-width:760px; margin:0 auto; padding:14px 14px 88px;}
-      .mHeader{padding:6px 4px 10px;}
-      .mTitle{font-size:18px; font-weight:850; letter-spacing:.2px;}
-      .mSubtitle{font-size:12px; color:var(--muted); margin-top:2px;}
+      for (const tour of state.tournaments){
+        const base = getTournamentBase(tour.typeKey);
+        const N = tour.players.length;
 
-      .mContent{display:flex; flex-direction:column; gap:12px;}
-      .mCard{
-        background:linear-gradient(180deg, var(--panel) 0%, var(--panel2) 100%);
-        border:1px solid var(--border);
-        border-radius:18px;
-        padding:14px;
-        box-shadow:0 12px 30px rgba(0,0,0,.35);
+        for (const res of tour.players){
+          const indiv = pointsForRank(base, N, res.rank);
+          const withTeam = applyTeamBonus(indiv, res.teamPos);
+          totals.set(res.playerId, (totals.get(res.playerId) || 0) + withTeam);
+        }
       }
 
-      .mRow{display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap;}
-      .mH2{font-size:13px; color:var(--muted); font-weight:800; margin:0 0 10px;}
-      .mHint{font-size:12px; color:var(--muted); line-height:1.35;}
-      .mDanger{color:var(--bad);}
+      const rows = state.players.map(p => ({
+        playerId: p.id,
+        name: p.name,
+        points: totals.get(p.id) || 0
+      }));
 
-      .mBtn{
-        background:#fff; color:#0b0b0c;
-        border:none; border-radius:14px;
-        padding:11px 14px; font-weight:850;
-        cursor:pointer;
+      rows.sort((a,b) => b.points - a.points || a.name.localeCompare(b.name, "fr"));
+      return rows;
+    }
+
+    // ---------------- UI (V2 mobile-first) ----------------
+    const viewRanking = document.getElementById("view-ranking");
+    const viewAdd = document.getElementById("view-add");
+    const viewJerseys = document.getElementById("view-jerseys");
+
+    function ensureMobileShell() {
+      const wrap = document.querySelector(".wrap");
+      if (!wrap) return;
+
+      wrap.innerHTML = `
+        <div class="mHeader">
+          <div class="mTitle">Classement ATP</div>
+          <div class="mSubtitle">Alcoholic Tibo Pinart</div>
+        </div>
+
+        <div class="mContent">
+          <div class="mCard" id="view-ranking"></div>
+          <div class="mCard" id="view-add" style="display:none"></div>
+          <div class="mCard" id="view-jerseys" style="display:none"></div>
+        </div>
+
+        <nav class="mNav">
+          <button class="mNavBtn active" data-view="ranking" aria-label="Classement">
+            <span class="mNavIcon">🏁</span>
+            <span class="mNavText">Classement</span>
+          </button>
+          <button class="mNavBtn" data-view="add" aria-label="Ajouter">
+            <span class="mNavIcon">➕</span>
+            <span class="mNavText">Tournoi</span>
+          </button>
+          <button class="mNavBtn" data-view="jerseys" aria-label="Maillots">
+            <span class="mNavIcon">👕</span>
+            <span class="mNavText">Maillots</span>
+          </button>
+        </nav>
+      `;
+
+      window.__vRanking = document.getElementById("view-ranking");
+      window.__vAdd = document.getElementById("view-add");
+      window.__vJerseys = document.getElementById("view-jerseys");
+
+      if (!document.getElementById("mobile-ui-v2-style")) {
+        const style = document.createElement("style");
+        style.id = "mobile-ui-v2-style";
+        style.textContent = `
+          :root{
+            --bg:#0b0b0c;
+            --panel:#121214;
+            --panel2:#0f0f11;
+            --border:#232327;
+            --text:#f5f5f7;
+            --muted:#a1a1aa;
+            --accent:#ffd600;
+            --bad:#ef4444;
+          }
+          body{background:radial-gradient(1000px 600px at 20% 0%, #141416 0%, var(--bg) 55%);}
+
+          .wrap{max-width:760px; margin:0 auto; padding:14px 14px 88px;}
+          .mHeader{padding:6px 4px 10px;}
+          .mTitle{font-size:18px; font-weight:850; letter-spacing:.2px;}
+          .mSubtitle{font-size:12px; color:var(--muted); margin-top:2px;}
+
+          .mContent{display:flex; flex-direction:column; gap:12px;}
+          .mCard{
+            background:linear-gradient(180deg, var(--panel) 0%, var(--panel2) 100%);
+            border:1px solid var(--border);
+            border-radius:18px;
+            padding:14px;
+            box-shadow:0 12px 30px rgba(0,0,0,.35);
+          }
+
+          .mRow{display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap;}
+          .mH2{font-size:13px; color:var(--muted); font-weight:800; margin:0 0 10px;}
+          .mHint{font-size:12px; color:var(--muted); line-height:1.35;}
+          .mDanger{color:var(--bad);}
+
+          .mBtn{
+            background:#fff; color:#0b0b0c;
+            border:none; border-radius:14px;
+            padding:11px 14px; font-weight:850;
+            cursor:pointer;
+          }
+          .mBtn2{
+            background:#0f0f11; color:var(--text);
+            border:1px solid var(--border);
+            border-radius:14px;
+            padding:11px 14px; font-weight:750;
+            cursor:pointer;
+          }
+          .mBtnSmall{padding:9px 12px; border-radius:12px; font-weight:800;}
+
+          .mInput, .mSelect{
+            width:100%;
+            background:#0f0f11; color:var(--text);
+            border:1px solid var(--border);
+            border-radius:14px;
+            padding:12px 12px;
+            outline:none;
+          }
+          .mLabel{font-size:12px; color:var(--muted); font-weight:750; margin-bottom:6px;}
+          .mGrid{display:grid; grid-template-columns:1fr; gap:10px;}
+          .mGrid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+          @media (max-width:420px){ .mGrid2{grid-template-columns:1fr;} }
+
+          .mTable{width:100%; border-collapse:collapse;}
+          .mTable th,.mTable td{padding:10px 6px; border-bottom:1px solid var(--border); text-align:left;}
+          .mTable th{font-size:11px; color:var(--muted); letter-spacing:.2px; font-weight:850;}
+          .mRank{width:48px; color:var(--muted); font-weight:850;}
+          .mPts{width:110px; text-align:right; font-variant-numeric:tabular-nums;}
+          .mName{font-weight:800;}
+
+          .mList{display:flex; flex-direction:column; gap:10px;}
+          .mLine{
+            display:flex; gap:10px; align-items:center; justify-content:space-between;
+            background:#0f0f11; border:1px solid var(--border);
+            padding:12px; border-radius:14px;
+          }
+          .mSelectInline{min-width:180px;}
+
+          .mNav{
+            position:fixed; left:0; right:0; bottom:0;
+            background:rgba(12,12,13,.92);
+            border-top:1px solid var(--border);
+            display:grid; grid-template-columns:1fr 1fr 1fr;
+            padding:10px 10px 12px;
+            backdrop-filter: blur(10px);
+          }
+          .mNavBtn{
+            background:transparent; border:none; color:var(--muted);
+            display:flex; flex-direction:column; align-items:center; gap:4px;
+            font-weight:850; cursor:pointer;
+            padding:6px 0;
+          }
+          .mNavBtn.active{color:var(--text);}
+          .mNavIcon{font-size:18px; line-height:18px;}
+          .mNavText{font-size:11px; letter-spacing:.2px;}
+          .mNavBtn.active .mNavText{color:var(--accent);}
+        `;
+        document.head.appendChild(style);
       }
-      .mBtn2{
-        background:#0f0f11; color:var(--text);
-        border:1px solid var(--border);
-        border-radius:14px;
-        padding:11px 14px; font-weight:750;
-        cursor:pointer;
-      }
-      .mBtnSmall{padding:9px 12px; border-radius:12px; font-weight:800;}
+    }
 
-      .mInput, .mSelect{
-        width:100%;
-        background:#0f0f11; color:var(--text);
-        border:1px solid var(--border);
-        border-radius:14px;
-        padding:12px 12px;
-        outline:none;
-      }
-      .mLabel{font-size:12px; color:var(--muted); font-weight:750; margin-bottom:6px;}
-      .mField{flex:1; min-width:180px;}
-      .mGrid{display:grid; grid-template-columns:1fr; gap:10px;}
-      .mGrid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
-      @media (max-width:420px){ .mGrid2{grid-template-columns:1fr;} }
+    function switchView(name) {
+      const vRanking = window.__vRanking || viewRanking;
+      const vAdd = window.__vAdd || viewAdd;
+      const vJerseys = window.__vJerseys || viewJerseys;
 
-      .mTable{width:100%; border-collapse:collapse;}
-      .mTable th,.mTable td{padding:10px 6px; border-bottom:1px solid var(--border); text-align:left;}
-      .mTable th{font-size:11px; color:var(--muted); letter-spacing:.2px; font-weight:850;}
-      .mRank{width:48px; color:var(--muted); font-weight:850;}
-      .mPts{width:110px; text-align:right; font-variant-numeric:tabular-nums;}
-      .mName{font-weight:800;}
-      .mLink{cursor:pointer; text-decoration:none; color:var(--text);}
-      .mLink:hover{color:var(--accent);}
+      vRanking.style.display = name === "ranking" ? "block" : "none";
+      vAdd.style.display = name === "add" ? "block" : "none";
+      vJerseys.style.display = name === "jerseys" ? "block" : "none";
 
-      .mList{display:flex; flex-direction:column; gap:10px;}
-      .mLine{
-        display:flex; gap:10px; align-items:center; justify-content:space-between;
-        background:#0f0f11; border:1px solid var(--border);
-        padding:12px; border-radius:14px;
-      }
-      .mTag{font-size:11px; color:var(--muted); border:1px solid var(--border); padding:6px 10px; border-radius:999px;}
-      .mSelectInline{min-width:180px;}
+      document.querySelectorAll(".mNavBtn").forEach(b => {
+        b.classList.toggle("active", b.getAttribute("data-view") === name);
+      });
+    }
 
-      .mNav{
-        position:fixed; left:0; right:0; bottom:0;
-        background:rgba(12,12,13,.92);
-        border-top:1px solid var(--border);
-        display:grid; grid-template-columns:1fr 1fr 1fr;
-        padding:10px 10px 12px;
-        backdrop-filter: blur(10px);
-      }
-      .mNavBtn{
-        background:transparent; border:none; color:var(--muted);
-        display:flex; flex-direction:column; align-items:center; gap:4px;
-        font-weight:850; cursor:pointer;
-        padding:6px 0;
-      }
-      .mNavBtn.active{color:var(--text);}
-      .mNavIcon{font-size:18px; line-height:18px;}
-      .mNavText{font-size:11px; letter-spacing:.2px;}
-      .mNavBtn.active .mNavText{color:var(--accent);}
-    `;
-    document.head.appendChild(style);
-  }
-}
+    function formatPoints(x) { return Math.round(x).toLocaleString("fr-FR"); }
+    function escapeHtml(s) {
+      return String(s)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
 
-function switchView(name) {
-  const vRanking = window.__vRanking || viewRanking;
-  const vAdd = window.__vAdd || viewAdd;
-  const vJerseys = window.__vJerseys || viewJerseys;
+    function renderRanking() {
+      const vRanking = window.__vRanking || viewRanking;
+      const ranking = computeRanking();
+      const last = state.tournaments[state.tournaments.length - 1];
+      const lastText = last
+        ? `${TOURNAMENTS.find(t => t.key === last.typeKey)?.name || last.typeKey} | ${last.dateISO}`
+        : "Aucun tournoi enregistré";
 
-  vRanking.style.display = name === "ranking" ? "block" : "none";
-  vAdd.style.display = name === "add" ? "block" : "none";
-  vJerseys.style.display = name === "jerseys" ? "block" : "none";
-
-  document.querySelectorAll(".mNavBtn").forEach(b => {
-    b.classList.toggle("active", b.getAttribute("data-view") === name);
-  });
-}
-
-function formatPoints(x) {
-  return Math.round(x).toLocaleString("fr-FR");
-}
-function escapeHtml(s) {
-  return String(s)
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
-}
-
-// -------- RENDER: Classement --------
-function renderRanking() {
-  const vRanking = window.__vRanking || viewRanking;
-  const ranking = computeRanking();
-  const last = state.tournaments[state.tournaments.length - 1];
-  const lastText = last
-    ? `${TOURNAMENTS.find(t => t.key === last.typeKey)?.name || last.typeKey} | ${last.dateISO}`
-    : "Aucun tournoi enregistré";
-
-  vRanking.innerHTML = `
-    <div class="mRow" style="margin-bottom:10px">
-      <div>
-        <div class="mH2">Classement</div>
-        <div class="mHint">Dernier tournoi: ${escapeHtml(lastText)}</div>
-      </div>
-      <button class="mBtn2 mBtnSmall" id="btn-wipe">Reset</button>
-    </div>
-
-    <table class="mTable">
-      <thead>
-        <tr>
-          <th class="mRank">R</th>
-          <th>Joueur</th>
-          <th class="mPts">Pts</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${ranking.map((r, i) => `
-          <tr>
-            <td class="mRank">${i + 1}</td>
-            <td class="mName">${escapeHtml(r.name)}</td>
-            <td class="mPts">${formatPoints(r.points)}</td>
-          </tr>
-        `).join("")}
-      </tbody>
-    </table>
-
-    <div class="mHint" style="margin-top:10px">
-      Formule: base * (0.10 + 0.90 * ((N-rang)/(N-1))^${P_EXP}). Bonus équipe: +10%, 0%, -10%.
-    </div>
-  `;
-
-  vRanking.querySelector("#btn-wipe").addEventListener("click", () => {
-    localStorage.removeItem(KEY);
-    state = loadState();
-    renderAll();
-    switchView("ranking");
-  });
-}
-
-// -------- RENDER: Ajouter tournoi --------
-function renderAdd() {
-  const vAdd = window.__vAdd || viewAdd;
-
-  const options = state.players
-    .slice()
-    .sort(byName)
-    .map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`)
-    .join("");
-
-  vAdd.innerHTML = `
-    <div class="mRow" style="margin-bottom:10px">
-      <div>
-        <div class="mH2">Ajouter un tournoi</div>
-        <div class="mHint">Rangs uniques de 1 à N. Équipe optionnelle.</div>
-      </div>
-    </div>
-
-    <div class="mGrid2">
-      <div>
-        <div class="mLabel">Date</div>
-        <input class="mInput" id="tour-date" type="date" />
-      </div>
-      <div>
-        <div class="mLabel">Type</div>
-        <select class="mSelect" id="tour-type">
-          ${TOURNAMENTS.map(t => `<option value="${t.key}">${t.name} (base ${t.base})</option>`).join("")}
-        </select>
-      </div>
-    </div>
-
-    <div style="height:10px"></div>
-
-    <div class="mGrid">
-      <div>
-        <div class="mLabel">Ajouter un joueur existant</div>
-        <select class="mSelect" id="pick-player">
-          <option value="">Sélectionner…</option>
-          ${options}
-        </select>
-      </div>
-
-      <div>
-        <div class="mLabel">Ou créer un nouveau joueur</div>
-        <input class="mInput" id="new-player" type="text" placeholder="Nom (ex: Matis)" />
-      </div>
-
-      <button class="mBtn2" id="btn-add-player">Ajouter au tournoi</button>
-
-      <div class="mHint" id="auto-suggest"></div>
-      <div class="mHint mDanger" id="add-error" style="display:none"></div>
-    </div>
-
-    <div style="height:12px"></div>
-    <div id="players-area"></div>
-
-    <div style="height:12px"></div>
-    <button class="mBtn" id="btn-save">Enregistrer</button>
-
-    <div class="mHint" style="margin-top:10px">
-      Major: N ≥ 6 et présence de JP, Louis, Eloi. Sinon 6+ = Monster 1000, 4-5 = Murge 500, 3 = Chamangeurs 250, 2 = Golems 100.
-    </div>
-  `;
-
-  const dateInput = vAdd.querySelector("#tour-date");
-  const typeSelect = vAdd.querySelector("#tour-type");
-  const pickPlayer = vAdd.querySelector("#pick-player");
-  const newPlayer = vAdd.querySelector("#new-player");
-  const addBtn = vAdd.querySelector("#btn-add-player");
-  const area = vAdd.querySelector("#players-area");
-  const saveBtn = vAdd.querySelector("#btn-save");
-  const autoSuggest = vAdd.querySelector("#auto-suggest");
-  const err = vAdd.querySelector("#add-error");
-
-  // default date today
-  dateInput.value = new Date().toISOString().slice(0,10);
-
-  /** @type {{playerId:string,name:string,rank:number,teamPos:number|null}[]} */
-  let current = [];
-
-  function refresh() {
-    const N = current.length;
-    const names = current.map(x => x.name);
-    const suggested = inferTournamentType(N, names);
-    const suggestedName = TOURNAMENTS.find(t => t.key === suggested)?.name || suggested;
-    autoSuggest.textContent = N >= 2 ? `Type conseillé: ${suggestedName}` : "";
-
-    err.style.display = "none";
-    err.textContent = "";
-
-    area.innerHTML = `
-      <div class="mRow" style="margin-bottom:8px">
-        <div class="mH2" style="margin:0">Participants (${N})</div>
-        <button class="mBtn2 mBtnSmall" id="btn-clear">Vider</button>
-      </div>
-
-      ${N === 0 ? `<div class="mHint">Ajoute des joueurs ci-dessus.</div>` : ""}
-
-      <div class="mList">
-        ${current.map((c, idx) => `
-          <div class="mLine">
-            <div style="flex:1; min-width:120px">
-              <div style="font-weight:900">${escapeHtml(c.name)}</div>
-              <div class="mHint">Rang fin de partie</div>
-            </div>
-
-            <div style="width:92px">
-              <input class="mInput" data-rank="${idx}" type="number" min="1" step="1" value="${c.rank}" />
-            </div>
-
-            <div style="min-width:140px">
-              <select class="mSelect mSelectInline" data-team="${idx}">
-                <option value="" ${c.teamPos===null ? "selected" : ""}>Équipe: aucune</option>
-                <option value="1" ${c.teamPos===1 ? "selected" : ""}>1re (+10%)</option>
-                <option value="2" ${c.teamPos===2 ? "selected" : ""}>2e (0%)</option>
-                <option value="3" ${c.teamPos===3 ? "selected" : ""}>Dernière (-10%)</option>
-              </select>
-            </div>
-
-            <button class="mBtn2 mBtnSmall" data-remove="${idx}">✕</button>
+      vRanking.innerHTML = `
+        <div class="mRow" style="margin-bottom:10px">
+          <div>
+            <div class="mH2">Classement</div>
+            <div class="mHint">Dernier tournoi: ${escapeHtml(lastText)}</div>
           </div>
-        `).join("")}
-      </div>
-    `;
+          <button class="mBtn2 mBtnSmall" id="btn-wipe">Reset</button>
+        </div>
 
-    area.querySelector("#btn-clear").addEventListener("click", () => {
-      current = [];
-      refresh();
-    });
+        <table class="mTable">
+          <thead>
+            <tr>
+              <th class="mRank">R</th>
+              <th>Joueur</th>
+              <th class="mPts">Pts</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${ranking.map((r, i) => `
+              <tr>
+                <td class="mRank">${i + 1}</td>
+                <td class="mName">${escapeHtml(r.name)}</td>
+                <td class="mPts">${formatPoints(r.points)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
 
-    area.querySelectorAll("button[data-remove]").forEach(b => {
-      b.addEventListener("click", () => {
-        const i = clampInt(b.getAttribute("data-remove"), 0, 1e9);
-        current.splice(i, 1);
-        refresh();
+        <div class="mHint" style="margin-top:10px">
+          Formule: base * (0.10 + 0.90 * ((N-rang)/(N-1))^${P_EXP}). Bonus équipe: +10%, 0%, -10%.
+        </div>
+      `;
+
+      vRanking.querySelector("#btn-wipe").addEventListener("click", () => {
+        localStorage.removeItem(KEY);
+        state = loadState();
+        renderAll();
+        switchView("ranking");
       });
-    });
-
-    area.querySelectorAll("input[data-rank]").forEach(inp => {
-      inp.addEventListener("input", () => {
-        const i = clampInt(inp.getAttribute("data-rank"), 0, 1e9);
-        current[i].rank = clampInt(inp.value, 1, 999);
-      });
-    });
-
-    area.querySelectorAll("select[data-team]").forEach(sel => {
-      sel.addEventListener("change", () => {
-        const i = clampInt(sel.getAttribute("data-team"), 0, 1e9);
-        const v = sel.value === "" ? null : clampInt(sel.value, 1, 3);
-        current[i].teamPos = v;
-      });
-    });
-  }
-
-  function addParticipant(player) {
-    if (current.some(x => x.playerId === player.id)) return;
-    current.push({ playerId: player.id, name: player.name, rank: current.length + 1, teamPos: null });
-    refresh();
-  }
-
-  addBtn.addEventListener("click", () => {
-    const pid = pickPlayer.value;
-    const name = newPlayer.value.trim();
-
-    if (pid) {
-      const p = state.players.find(x => x.id === pid);
-      if (p) addParticipant(p);
-      pickPlayer.value = "";
-      return;
     }
 
-    if (name) {
-      const p = upsertPlayer(name);
-      if (p) addParticipant(p);
-      newPlayer.value = "";
-      // refresh dropdown list
-      renderAdd();
-      return;
-    }
+    function renderAdd() {
+      const vAdd = window.__vAdd || viewAdd;
 
-    err.style.display = "block";
-    err.textContent = "Sélectionne un joueur existant ou crée un nouveau joueur.";
-  });
+      const options = state.players
+        .slice()
+        .sort(byName)
+        .map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`)
+        .join("");
 
-  saveBtn.addEventListener("click", () => {
-    const N = current.length;
-    if (N < 2) {
-      err.style.display = "block";
-      err.textContent = "Il faut au moins 2 joueurs.";
-      return;
-    }
-
-    const ranks = current.map(x => x.rank);
-    const allInRange = ranks.every(r => r >= 1 && r <= N);
-    const unique = new Set(ranks).size === ranks.length;
-    if (!allInRange || !unique) {
-      err.style.display = "block";
-      err.textContent = "Les rangs doivent être uniques et compris entre 1 et N.";
-      return;
-    }
-
-    const dateISO = dateInput.value || new Date().toISOString().slice(0,10);
-    const typeKey = typeSelect.value;
-
-    state.tournaments.push({
-      id: uid(),
-      dateISO,
-      typeKey,
-      players: current.map(x => ({
-        playerId: x.playerId,
-        rank: x.rank,
-        teamPos: x.teamPos
-      }))
-    });
-
-    saveState(state);
-
-    current = [];
-    refresh();
-    renderRanking();
-    switchView("ranking");
-  });
-
-  refresh();
-}
-
-// -------- RENDER: Maillots --------
-function renderJerseys() {
-  const vJerseys = window.__vJerseys || viewJerseys;
-  const ranking = computeRanking();
-
-  const playerOptions = (selectedId) => `
-    <option value="">Non attribué</option>
-    ${ranking.map(r => `<option value="${r.playerId}" ${r.playerId===selectedId ? "selected" : ""}>${escapeHtml(r.name)}</option>`).join("")}
-  `;
-
-  vJerseys.innerHTML = `
-    <div class="mRow" style="margin-bottom:10px">
-      <div>
-        <div class="mH2">Maillots</div>
-        <div class="mHint">Titulaires courants (mise à jour manuelle).</div>
-      </div>
-      <button class="mBtn" id="btn-save-jerseys">Enregistrer</button>
-    </div>
-
-    <div class="mList">
-      ${state.jerseys.map((j, idx) => `
-        <div class="mLine">
-          <div style="flex:1">
-            <div style="font-weight:900">${escapeHtml(j.jersey)}</div>
-            <div class="mHint">Titulaire</div>
+      vAdd.innerHTML = `
+        <div class="mRow" style="margin-bottom:10px">
+          <div>
+            <div class="mH2">Ajouter un tournoi</div>
+            <div class="mHint">Rangs uniques de 1 à N. Équipe optionnelle.</div>
           </div>
-          <div style="min-width:180px">
-            <select class="mSelect" data-jersey="${idx}">
-              ${playerOptions(j.holderPlayerId)}
+        </div>
+
+        <div class="mGrid2">
+          <div>
+            <div class="mLabel">Date</div>
+            <input class="mInput" id="tour-date" type="date" />
+          </div>
+          <div>
+            <div class="mLabel">Type</div>
+            <select class="mSelect" id="tour-type">
+              ${TOURNAMENTS.map(t => `<option value="${t.key}">${t.name} (base ${t.base})</option>`).join("")}
             </select>
           </div>
         </div>
-      `).join("")}
-    </div>
 
-    <div class="mHint" style="margin-top:10px">
-      V2+ : on pourra lier certains maillots à des règles automatiques si tu veux.
-    </div>
-  `;
+        <div style="height:10px"></div>
 
-  vJerseys.querySelector("#btn-save-jerseys").addEventListener("click", () => {
-    vJerseys.querySelectorAll("select[data-jersey]").forEach(sel => {
-      const i = clampInt(sel.getAttribute("data-jersey"), 0, 1e9);
-      state.jerseys[i].holderPlayerId = sel.value || null;
-    });
-    saveState(state);
-    renderJerseys();
-  });
-}
+        <div class="mGrid">
+          <div>
+            <div class="mLabel">Ajouter un joueur existant</div>
+            <select class="mSelect" id="pick-player">
+              <option value="">Sélectionner…</option>
+              ${options}
+            </select>
+          </div>
 
-function renderAll() {
-  renderRanking();
-  renderAdd();
-  renderJerseys();
-}
+          <div>
+            <div class="mLabel">Ou créer un nouveau joueur</div>
+            <input class="mInput" id="new-player" type="text" placeholder="Nom (ex: Matis)" />
+          </div>
 
-function bindNav() {
-  document.querySelectorAll(".mNavBtn").forEach(b => {
-    b.addEventListener("click", () => switchView(b.getAttribute("data-view")));
-  });
-}
+          <button class="mBtn2" id="btn-add-player">Ajouter au tournoi</button>
 
-// ---------------- Init UI V2 ----------------
-ensureMobileShell();
-bindNav();
-renderAll();
-switchView("ranking");
+          <div class="mHint" id="auto-suggest"></div>
+          <div class="mHint mDanger" id="add-error" style="display:none"></div>
+        </div>
 
+        <div style="height:12px"></div>
+        <div id="players-area"></div>
+
+        <div style="height:12px"></div>
+        <button class="mBtn" id="btn-save">Enregistrer</button>
+
+        <div class="mHint" style="margin-top:10px">
+          Major: N ≥ 6 et présence de JP, Louis, Eloi. Sinon 6+ = Monster 1000, 4-5 = Murge 500, 3 = Chamangeurs 250, 2 = Golems 100.
+        </div>
+      `;
+
+      const dateInput = vAdd.querySelector("#tour-date");
+      const typeSelect = vAdd.querySelector("#tour-type");
+      const pickPlayer = vAdd.querySelector("#pick-player");
+      const newPlayer = vAdd.querySelector("#new-player");
+      const addBtn = vAdd.querySelector("#btn-add-player");
+      const area = vAdd.querySelector("#players-area");
+      const saveBtn = vAdd.querySelector("#btn-save");
+      const autoSuggest = vAdd.querySelector("#auto-suggest");
+      const err = vAdd.querySelector("#add-error");
+
+      dateInput.value = new Date().toISOString().slice(0,10);
+
+      let current = [];
+
+      function refresh() {
+        const N = current.length;
+        const names = current.map(x => x.name);
+        const suggested = inferTournamentType(N, names);
+        const suggestedName = TOURNAMENTS.find(t => t.key === suggested)?.name || suggested;
+        autoSuggest.textContent = N >= 2 ? `Type conseillé: ${suggestedName}` : "";
+
+        err.style.display = "none";
+        err.textContent = "";
+
+        area.innerHTML = `
+          <div class="mRow" style="margin-bottom:8px">
+            <div class="mH2" style="margin:0">Participants (${N})</div>
+            <button class="mBtn2 mBtnSmall" id="btn-clear">Vider</button>
+          </div>
+
+          ${N === 0 ? `<div class="mHint">Ajoute des joueurs ci-dessus.</div>` : ""}
+
+          <div class="mList">
+            ${current.map((c, idx) => `
+              <div class="mLine">
+                <div style="flex:1; min-width:120px">
+                  <div style="font-weight:900">${escapeHtml(c.name)}</div>
+                  <div class="mHint">Rang fin de partie</div>
+                </div>
+
+                <div style="width:92px">
+                  <input class="mInput" data-rank="${idx}" type="number" min="1" step="1" value="${c.rank}" />
+                </div>
+
+                <div style="min-width:140px">
+                  <select class="mSelect mSelectInline" data-team="${idx}">
+                    <option value="" ${c.teamPos===null ? "selected" : ""}>Équipe: aucune</option>
+                    <option value="1" ${c.teamPos===1 ? "selected" : ""}>1re (+10%)</option>
+                    <option value="2" ${c.teamPos===2 ? "selected" : ""}>2e (0%)</option>
+                    <option value="3" ${c.teamPos===3 ? "selected" : ""}>Dernière (-10%)</option>
+                  </select>
+                </div>
+
+                <button class="mBtn2 mBtnSmall" data-remove="${idx}">✕</button>
+              </div>
+            `).join("")}
+          </div>
+        `;
+
+        area.querySelector("#btn-clear").addEventListener("click", () => {
+          current = [];
+          refresh();
+        });
+
+        area.querySelectorAll("button[data-remove]").forEach(b => {
+          b.addEventListener("click", () => {
+            const i = clampInt(b.getAttribute("data-remove"), 0, 1e9);
+            current.splice(i, 1);
+            refresh();
+          });
+        });
+
+        area.querySelectorAll("input[data-rank]").forEach(inp => {
+          inp.addEventListener("input", () => {
+            const i = clampInt(inp.getAttribute("data-rank"), 0, 1e9);
+            current[i].rank = clampInt(inp.value, 1, 999);
+          });
+        });
+
+        area.querySelectorAll("select[data-team]").forEach(sel => {
+          sel.addEventListener("change", () => {
+            const i = clampInt(sel.getAttribute("data-team"), 0, 1e9);
+            const v = sel.value === "" ? null : clampInt(sel.value, 1, 3);
+            current[i].teamPos = v;
+          });
+        });
+      }
+
+      function addParticipant(player) {
+        if (current.some(x => x.playerId === player.id)) return;
+        current.push({ playerId: player.id, name: player.name, rank: current.length + 1, teamPos: null });
+        refresh();
+      }
+
+      addBtn.addEventListener("click", () => {
+        const pid = pickPlayer.value;
+        const name = newPlayer.value.trim();
+
+        if (pid) {
+          const p = state.players.find(x => x.id === pid);
+          if (p) addParticipant(p);
+          pickPlayer.value = "";
+          return;
+        }
+
+        if (name) {
+          const p = upsertPlayer(name);
+          if (p) addParticipant(p);
+          newPlayer.value = "";
+          renderAdd();
+          return;
+        }
+
+        err.style.display = "block";
+        err.textContent = "Sélectionne un joueur existant ou crée un nouveau joueur.";
+      });
+
+      saveBtn.addEventListener("click", () => {
+        const N = current.length;
+        if (N < 2) {
+          err.style.display = "block";
+          err.textContent = "Il faut au moins 2 joueurs.";
+          return;
+        }
+
+        const ranks = current.map(x => x.rank);
+        const allInRange = ranks.every(r => r >= 1 && r <= N);
+        const unique = new Set(ranks).size === ranks.length;
+        if (!allInRange || !unique) {
+          err.style.display = "block";
+          err.textContent = "Les rangs doivent être uniques et compris entre 1 et N.";
+          return;
+        }
+
+        const dateISO = dateInput.value || new Date().toISOString().slice(0,10);
+        const typeKey = typeSelect.value;
+
+        state.tournaments.push({
+          id: uid(),
+          dateISO,
+          typeKey,
+          players: current.map(x => ({ playerId: x.playerId, rank: x.rank, teamPos: x.teamPos }))
+        });
+
+        saveState(state);
+
+        current = [];
+        refresh();
+        renderRanking();
+        switchView("ranking");
+      });
+
+      refresh();
+    }
+
+    function renderJerseys() {
+      const vJerseys = window.__vJerseys || viewJerseys;
+      const ranking = computeRanking();
+
+      const playerOptions = (selectedId) => `
+        <option value="">Non attribué</option>
+        ${ranking.map(r => `<option value="${r.playerId}" ${r.playerId===selectedId ? "selected" : ""}>${escapeHtml(r.name)}</option>`).join("")}
+      `;
+
+      vJerseys.innerHTML = `
+        <div class="mRow" style="margin-bottom:10px">
+          <div>
+            <div class="mH2">Maillots</div>
+            <div class="mHint">Titulaires courants (mise à jour manuelle).</div>
+          </div>
+          <button class="mBtn" id="btn-save-jerseys">Enregistrer</button>
+        </div>
+
+        <div class="mList">
+          ${state.jerseys.map((j, idx) => `
+            <div class="mLine">
+              <div style="flex:1">
+                <div style="font-weight:900">${escapeHtml(j.jersey)}</div>
+                <div class="mHint">Titulaire</div>
+              </div>
+              <div style="min-width:180px">
+                <select class="mSelect" data-jersey="${idx}">
+                  ${playerOptions(j.holderPlayerId)}
+                </select>
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      `;
+
+      vJerseys.querySelector("#btn-save-jerseys").addEventListener("click", () => {
+        vJerseys.querySelectorAll("select[data-jersey]").forEach(sel => {
+          const i = clampInt(sel.getAttribute("data-jersey"), 0, 1e9);
+          state.jerseys[i].holderPlayerId = sel.value || null;
+        });
+        saveState(state);
+        renderJerseys();
+      });
+    }
+
+    function renderAll() {
+      renderRanking();
+      renderAdd();
+      renderJerseys();
+    }
+
+    function bindNav() {
+      document.querySelectorAll(".mNavBtn").forEach(b => {
+        b.addEventListener("click", () => switchView(b.getAttribute("data-view")));
+      });
+    }
+
+    // ---------------- Init UI V2 ----------------
+    ensureMobileShell();
+    bindNav();
+    renderAll();
+    switchView("ranking");
+  })();
+  </script>
 </body>
 </html>
